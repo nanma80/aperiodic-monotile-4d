@@ -14,12 +14,13 @@ python -m SimpleHTTPServer 8000
 
 (* frameCount = 10; *)
 frameCount = 100;
+frameCount = 60;
 
 (* topView = False; *)
 topView = True;
 
-singleTile = False;
-(* singleTile = True; *)
+(* singleTile = False; *)
+singleTile = True;
 
 (* fullRotation = False; *)
 fullRotation = True;
@@ -262,9 +263,10 @@ exportAnimation[] := Module[
 	(* Exit[]; *)
     delay = If[frameCount > 10, 3, 50];
 
-    gifCommand = "magick convert -duplicate 1,-2-1 -quiet +repage -alpha remove -loop 0 -delay "  
+    (* gifCommand = "magick convert -duplicate 1,-2-1 -quiet +repage -alpha remove -loop 0 -delay "   *)
     (* loop back*)
-    (* gifCommand = "magick convert -quiet +repage -alpha remove -loop 0 -delay " (* no looping back *) *)
+    gifCommand = "magick convert -quiet +repage -alpha remove -loop 0 -delay " 
+    (* no looping back *)
 		<> IntegerString[delay] <> " -dispose 2 " <> outputFolder <> "\\*animation*.png " <> gifFolder <> "\\" <> gifFileName <> ".gif";
 
 	Print[gifCommand];
