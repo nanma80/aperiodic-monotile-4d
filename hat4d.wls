@@ -428,5 +428,12 @@ polygons = Map[offset[#, - center ]&, polygons];
 	exportImage[polygons, id/6*Pi/2, id, "test"];
 ];
  *)
+Print["4D skew polygon"];
+Map[Print, polygon4d];
+Print[];
+Print["projection matrix"]
+Map[Print, projection43[t][[{1, 2}]] ];
+
+Exit[];
 
 exportAnimation[];
