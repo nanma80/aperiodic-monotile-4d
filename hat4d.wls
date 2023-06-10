@@ -12,9 +12,10 @@ python -m SimpleHTTPServer 8000
 
 (* global config *)
 
-frameCount = 2;
+(* frameCount = 2; *)
+(* frameCount = 5; *)
 (* frameCount = 10; *)
-(* frameCount = 100; *)
+frameCount = 100;
 (* frameCount = 60; *)
 
 (* topView = False; *)
@@ -23,8 +24,8 @@ topView = True;
 singleTile = False;
 (* singleTile = True; *)
 
-fullRotation = False;
-(* fullRotation = True; *)
+(* fullRotation = False; *)
+fullRotation = True;
 
 (* shape = "spectre_4d"; *)
 shape = "hat_4d";
@@ -34,7 +35,7 @@ dataFolder = "data";
 imageFolder = "output";
 imageSize = 720/3 * {4, 3};
 
-range = If[singleTile, 3, 10];
+range = If[singleTile, 3, If[shape == "spectre", 10, 8]]; (* change to 10 *)
 thickness = 0.05;
 
 shapeWithParams = shape <> If[topView, "", "_sideView"] <> If[fullRotation, "", "_quarterTurn"] <> If[singleTile, "_singleTile", ""] <> "_" <> IntegerString[frameCount];
@@ -257,7 +258,8 @@ exportAnimation[] := Module[
 	For[frameIndex = 1, frameIndex <= Length[angles], frameIndex++,
 		(* Continue[]; *)
 		(* If[frameIndex < 31, Continue[]]; *)
-		If[Mod[frameIndex, 2] == 1 && frameIndex > 1, Continue[]];
+		(* If[Mod[frameIndex, 2] == 1 && frameIndex > 1, Continue[]]; *)
+		(* If[frameIndex != 2, Continue[]]; *)
 		angle = angles[[frameIndex]];
 		Print["exporting frame " <> IntegerString[frameIndex] <> " / " <> IntegerString[Length[angles]] <> " angle: " <> ToString[angle] ];
 		exportImage[polygons, angle/180.0 * Pi, frameIndex, frameFolder];
@@ -351,6 +353,7 @@ flipDimensions = {
 	{1, 0, 0, 0},
 	{0, 1, 0, 0}
 };
+mirror4D = DiagonalMatrix[{1,-1,1,-1}];
 
 offset[polygon_, move_] := Map[# + move &, polygon];
 rotate[angle_] := ArrayFlatten[{
@@ -423,14 +426,62 @@ getSpectreTiling[polygon4d_] := Module[
 ];
 
 getHatTiling[polygon4d_] := Module[
-	{flippedPolygon, turtle1, hat1},
+	{flippedPolygon, hat1},
 
 	flippedPolygon = polygon4d.flipDimensions;
-	turtle1 = polygon4d;
-	hat1 = rotateAt[offset[flippedPolygon, - flippedPolygon[[6]] + polygon4d[[14]]], 30, polygon4d[[14]]];
+	hat1 = rotateAt[flippedPolygon, 30, flippedPolygon[[1]]];
+	mirror1 = rotateAt[ hat1.mirror4D, -120, hat1[[1]] ];
+	mirror1 = offset[mirror1, -mirror1[[11]] + hat1[[5]] ];
+	hat2 = rotateAt[hat1, -120, hat1[[1]] ];
+	hat2 = offset[hat2, -hat2[[5]] + mirror1[[1]]];
+	hat3 = offset[hat1, -hat1[[12]] + mirror1[[6]]];
+	hat4 = rotateAt[hat2, 60, hat2[[1]]];
+	hat4 = offset[hat4, -hat4[[5]] + hat1[[9]]];
+	hat5 = offset[hat1, -hat1[[5]] + hat1[[11]]];
+
+	hat6 = rotateAt[hat4, 120, hat4[[1]]];
+	hat6 = offset[hat6, -hat6[[5]] + mirror1[[9]]];
+	hat7 = rotateAt[hat5, 120, hat5[[1]]];
+	hat7 = offset[hat7, -hat7[[5]] + hat3[[1]]];
+
+	hat8 = offset[hat6, -hat6[[12]] + hat3[[8]]];
+	hat9 = offset[hat1, -hat1[[2]] + hat8[[8]] ];
+
+	hat10 = offset[hat7, -hat7[[12]] + hat2[[14]]];
+	hat11 = rotateAt[hat10, 60, hat10[[1]]];
+	hat11 = offset[hat11, -hat11[[8]] + hat10[[2]] ];
+
+	mirror2 = rotateAt[mirror1, -60, mirror1[[1]]];
+	mirror2 = offset[mirror2, -mirror2[[9]] + hat9[[5]] ];
+
+	hat12 = offset[hat4, -hat4[[5]] + mirror2[[11]] ];
+	hat13 = offset[hat4, -hat4[[12]] + mirror2[[6]]];
+
+	hat14 = offset[hat13, -hat13[[11]] +hat13[[5]]];
+	hat15 = offset[hat3, -hat3[[11]] +hat3[[5]]];
+	hat16 = offset[hat2, -hat2[[12]] + hat1[[14]]];
+	hat17 = offset[hat11, -hat11[[14]] + hat6[[12]]];
+	hat18 = offset[hat13, -hat13[[12]] + hat6[[14]]];
+
+	mirror3 = rotateAt[mirror1, 60, mirror1[[1]] ];
+	mirror3 = offset[mirror3, -mirror3[[2]] + hat18[[6]] ];
+	hat19 = offset[hat6, -hat6[[12]] + mirror3[[6]] ];
+	hat20 = offset[hat19, -hat19[[11]] +hat19[[5]]];
+	hat21 = offset[hat20, -hat20[[11]] +hat20[[5]]];
+
+	mirror4 = offset[mirror3, -mirror3[[12]] +hat21[[6]]];
+	hat22 = offset[hat21, -hat21[[12]] + mirror4[[6]] ];
+	hat23 = offset[hat3, -hat3[[12]] + hat13[[8]] ];
+
+
+
+
 	polygons = {
-		turtle1
-	};
+		hat1, hat2, hat3, hat4, hat5, hat6, hat7, hat8, hat9, hat10, hat11,
+		hat12, hat13, hat14, hat15, hat16, hat17, hat18, hat19, hat20, hat21,
+		hat22, hat23,
+		mirror1, mirror2, mirror3, mirror4
+	};	
 	polygons
 ];
 
