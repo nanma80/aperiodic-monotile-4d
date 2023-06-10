@@ -31,8 +31,8 @@ shape = "spectre_4d";
 (* shape = "hat_4d"; *)
 
 (* meshMethod = ""; *)
-(* meshMethod = "design1"; *)
-meshMethod = "design2";
+meshMethod = "design1";
+(* meshMethod = "design2"; *)
 
 exportToPov = True;
 dataFolder = "data";
@@ -172,6 +172,34 @@ exportImage[polygons_, theta_, serialNumber_, frameFolder_] := Module[
 					{polygonCenter, projectedPolygon[[12]], projectedPolygon[[2]]}
 				}];
 		];
+		If[meshMethod == "design1",
+			p = projectedPolygon;
+			q1 = p[[12]] + p[[14]] - p[[13]];
+			q2 = p[[14]] + p[[2]] - p[[1]];
+			q3 = q1 + q2 - p[[14]];
+			q4 = p[[2]] + p[[4]] - p[[3]];
+			q5 = q4 + p[[5]] - p[[4]];
+			q6 = p[[8]] + p[[10]] - p[[9]];
+			q7 = q3 + q5 - q4;
+			q8 = q3 + p[[12]] - q1;
+
+			faces = {
+				{p[[1]], p[[2]], q2, p[[14]]},
+				{p[[12]], p[[13]], p[[14]], q1},
+				{p[[14]], q1, q3, q2},
+				{p[[2]], q4, q3, q2},
+				{p[[2]], p[[3]], p[[4]], q4},
+				{p[[4]], p[[5]], q5, q4},
+				{p[[5]], p[[6]], p[[7]], q5},
+				{q4, q5, q7, q3},
+				{q1, q3, q8, p[[12]]},
+				{p[[10]], p[[11]], p[[12]], q8},
+				{p[[10]], q7, q5, q6},
+				{p[[7]], p[[8]], q6, q5},
+				{p[[8]], p[[9]], p[[10]], q6}
+			};
+		];
+
 		If[meshMethod == "design2",
 			p = projectedPolygon;
 			q1 = p[[1]] + p[[13]] - p[[14]];
