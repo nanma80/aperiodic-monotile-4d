@@ -15,14 +15,14 @@ python -m SimpleHTTPServer 8000
 (* frameCount = 2; *)
 (* frameCount = 5; *)
 (* frameCount = 10; *)
-(* frameCount = 100; *)
-frameCount = 60;
+frameCount = 100;
+(* frameCount = 60; *)
 
 (* topView = False; *)
 topView = True;
 
-(* singleTile = False; *)
-singleTile = True;
+singleTile = False;
+(* singleTile = True; *)
 
 (* fullRotation = False; *)
 fullRotation = True;
