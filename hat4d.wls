@@ -31,8 +31,8 @@ shape = "spectre_4d";
 (* shape = "hat_4d"; *)
 
 (* meshMethod = ""; *)
-meshMethod = "design1";
-(* meshMethod = "design2"; *)
+(* meshMethod = "design1"; *)
+meshMethod = "design2";
 
 exportToPov = True;
 dataFolder = "data";
@@ -196,7 +196,8 @@ exportImage[polygons_, theta_, serialNumber_, frameFolder_] := Module[
 				{p[[10]], p[[11]], p[[12]], q8},
 				{p[[10]], q7, q5, q6},
 				{p[[7]], p[[8]], q6, q5},
-				{p[[8]], p[[9]], p[[10]], q6}
+				{p[[8]], p[[9]], p[[10]], q6},
+				{p[[10]], q7, q3, q8}
 			};
 		];
 
@@ -221,6 +222,7 @@ exportImage[polygons_, theta_, serialNumber_, frameFolder_] := Module[
 				{p[[4]], p[[5]], q6, q4},
 				{p[[5]], p[[6]], p[[7]], q6},
 				{p[[7]], p[[8]], q8, q6},
+				{q4, q5, q8, q6},
 				{p[[8]], p[[9]], p[[10]], p[[11]], p[[12]], q3, q5, q8}
 			};
 		];
