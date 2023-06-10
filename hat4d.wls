@@ -15,20 +15,24 @@ python -m SimpleHTTPServer 8000
 (* frameCount = 2; *)
 (* frameCount = 5; *)
 (* frameCount = 10; *)
-frameCount = 100;
-(* frameCount = 60; *)
+(* frameCount = 100; *)
+frameCount = 60;
 
 (* topView = False; *)
 topView = True;
 
-singleTile = False;
-(* singleTile = True; *)
+(* singleTile = False; *)
+singleTile = True;
 
 (* fullRotation = False; *)
 fullRotation = True;
 
-(* shape = "spectre_4d"; *)
-shape = "hat_4d";
+shape = "spectre_4d";
+(* shape = "hat_4d"; *)
+
+(* meshMethod = ""; *)
+(* meshMethod = "design1"; *)
+meshMethod = "design2";
 
 exportToPov = True;
 dataFolder = "data";
@@ -38,7 +42,7 @@ imageSize = 720/3 * {4, 3};
 range = If[singleTile, 3, If[shape == "spectre", 10, 8]]; (* change to 10 *)
 thickness = 0.05;
 
-shapeWithParams = shape <> If[topView, "", "_sideView"] <> If[fullRotation, "", "_quarterTurn"] <> If[singleTile, "_singleTile", ""] <> "_" <> IntegerString[frameCount];
+shapeWithParams = shape <> If[topView, "", "_sideView"] <> If[fullRotation, "", "_quarterTurn"] <> If[singleTile, "_singleTile", ""] <> If[meshMethod == "", "", "_" <> meshMethod] <> "_" <> IntegerString[frameCount];
 
 rangeFactor = 3.0;
 originalProjectionMatrixH4 = {
@@ -157,14 +161,41 @@ exportImage[polygons_, theta_, serialNumber_, frameFolder_] := Module[
 	facesByPolygons = {};
 	For[pid = 1, pid <= Length[projectedPolygons], pid++,
 		projectedPolygon = projectedPolygons[[pid]];
-		faces = Map[projectedPolygon[[#]]&, triangleIds ];
-		polygonCenter = Mean[projectedPolygon[[ {1, 2, 4, 5, 6, 7, 9, 10, 11, 13, 14} ]] ];
-		faces = Join[faces, {
-				{polygonCenter, projectedPolygon[[2]], projectedPolygon[[5]]},
-				{polygonCenter, projectedPolygon[[5]], projectedPolygon[[7]]},
-				{polygonCenter, projectedPolygon[[7]], projectedPolygon[[12]]},
-				{polygonCenter, projectedPolygon[[12]], projectedPolygon[[2]]}
-			}];
+		faces = {};
+		If[meshMethod == "",
+			faces = Map[projectedPolygon[[#]]&, triangleIds ];
+			polygonCenter = Mean[projectedPolygon[[ {1, 2, 4, 5, 6, 7, 9, 10, 11, 13, 14} ]] ];
+			faces = Join[faces, {
+					{polygonCenter, projectedPolygon[[2]], projectedPolygon[[5]]},
+					{polygonCenter, projectedPolygon[[5]], projectedPolygon[[7]]},
+					{polygonCenter, projectedPolygon[[7]], projectedPolygon[[12]]},
+					{polygonCenter, projectedPolygon[[12]], projectedPolygon[[2]]}
+				}];
+		];
+		If[meshMethod == "design2",
+			p = projectedPolygon;
+			q1 = p[[1]] + p[[13]] - p[[14]];
+			q2 = p[[2]] + q1 - p[[1]];
+			q3 = q1 + p[[12]] - p[[13]];
+			q4 = p[[2]] + p[[4]] - p[[3]];
+			q5 = q2 + q3 - q1;
+			q6 = p[[5]] + q4 - p[[4]];
+			q7 = p[[1]] + q3 - p[[12]];
+			q8 = p[[8]] + p[[10]] - p[[9]];
+
+			faces = {
+				{p[[1]], q1, p[[13]], p[[14]]},
+				{p[[1]], q1, q2, p[[2]]},
+				{q1, q3, p[[12]], p[[13]]},
+				{q1, q3, q5, q2},
+				{p[[2]], q4, q5, q2},
+				{p[[2]], p[[3]], p[[4]], q4},
+				{p[[4]], p[[5]], q6, q4},
+				{p[[5]], p[[6]], p[[7]], q6},
+				{p[[7]], p[[8]], q8, q6},
+				{p[[8]], p[[9]], p[[10]], p[[11]], p[[12]], q3, q5, q8}
+			};
+		];
 		(* faces = {projectedPolygon}; *)
 		AppendTo[facesByPolygons, faces];
 	];
