@@ -12,20 +12,23 @@ python -m SimpleHTTPServer 8000
 
 (* global config *)
 
+frameCount = 2;
 (* frameCount = 10; *)
-frameCount = 100;
-frameCount = 60;
+(* frameCount = 100; *)
+(* frameCount = 60; *)
 
 (* topView = False; *)
 topView = True;
 
-(* singleTile = False; *)
-singleTile = True;
+singleTile = False;
+(* singleTile = True; *)
 
-(* fullRotation = False; *)
-fullRotation = True;
+fullRotation = False;
+(* fullRotation = True; *)
 
-shape = "spectre_4d";
+(* shape = "spectre_4d"; *)
+shape = "hat_4d";
+
 exportToPov = True;
 dataFolder = "data";
 imageFolder = "output";
@@ -254,6 +257,7 @@ exportAnimation[] := Module[
 	For[frameIndex = 1, frameIndex <= Length[angles], frameIndex++,
 		(* Continue[]; *)
 		(* If[frameIndex < 31, Continue[]]; *)
+		If[Mod[frameIndex, 2] == 1 && frameIndex > 1, Continue[]];
 		angle = angles[[frameIndex]];
 		Print["exporting frame " <> IntegerString[frameIndex] <> " / " <> IntegerString[Length[angles]] <> " angle: " <> ToString[angle] ];
 		exportImage[polygons, angle/180.0 * Pi, frameIndex, frameFolder];
@@ -356,63 +360,86 @@ rotate[angle_] := ArrayFlatten[{
 
 rotateAt[polygon_, angle_, axis_] := Map[rotate[angle].(# - axis) + axis &, polygon];
 
-flippedPolygon = polygon4d.flipDimensions;
+getSpectreTiling[polygon4d_] := Module[
+	{flippedPolygon, turtle1, hat1},
 
-turtle1 = polygon4d;
-hat1 = rotateAt[offset[flippedPolygon, - flippedPolygon[[6]] + polygon4d[[14]]], 30, polygon4d[[14]]];
-hat2 = offset[ rotateAt[hat1, -60, polygon4d[[14]]], polygon4d[[12]] - polygon4d[[14]] ];
-hat3 = offset[ rotateAt[hat1, 60, polygon4d[[14]]], polygon4d[[2]] - polygon4d[[14]] ];
-hat4 = offset[ hat3, hat3[[12]] - hat3[[4]] ];
-hat5 = offset[rotateAt[hat3, 60, polygon4d[[1]] ], hat3[[3]] - hat3[[7]] ];
-hat6 = offset[hat1, polygon4d[[4]] - hat1[[14]]];
-hat7 = offset[ rotateAt[hat2, -60, polygon4d[[10]]  ], polygon4d[[8]] - polygon4d[[10]]];
-hat8 = offset[hat2, hat2[[12]] - hat2[[4]]];
-hat9 = offset[hat3, hat6[[8]] - hat3[[12]] ];
-turtle2 = offset[rotateAt[turtle1, 60, turtle1[[5]] ], -turtle1[[5]] + hat4[[13]]];
-hat10 = offset[hat2, -hat2[[7]] + turtle2[[9]] ];
-hat11 = rotateAt[hat4, 120, hat4[[3 ]] ];
-hat12 = offset[hat5, -hat5[[5]] + turtle2[[3]]];
-hat13 = offset[hat12, hat12[[12]]-hat12[[4]] ];
-hat14 = offset[hat4, -hat4[[5]] + hat12[[9]] ];
-hat15 = offset[hat1, -hat1[[5]] + turtle2[[13]]];
-hat16 = offset[hat15, hat15[[12]] - hat15[[4]] ];
-hat17 = offset[hat5, hat5[[12]] - hat5[[4]] ];
-hat18 = offset[hat1, -hat1[[12]] + hat12[[14]]];
+	flippedPolygon = polygon4d.flipDimensions;
+	turtle1 = polygon4d;
+	hat1 = rotateAt[offset[flippedPolygon, - flippedPolygon[[6]] + polygon4d[[14]]], 30, polygon4d[[14]]];
+	hat2 = offset[ rotateAt[hat1, -60, polygon4d[[14]]], polygon4d[[12]] - polygon4d[[14]] ];
+	hat3 = offset[ rotateAt[hat1, 60, polygon4d[[14]]], polygon4d[[2]] - polygon4d[[14]] ];
+	hat4 = offset[ hat3, hat3[[12]] - hat3[[4]] ];
+	hat5 = offset[rotateAt[hat3, 60, polygon4d[[1]] ], hat3[[3]] - hat3[[7]] ];
+	hat6 = offset[hat1, polygon4d[[4]] - hat1[[14]]];
+	hat7 = offset[ rotateAt[hat2, -60, polygon4d[[10]]  ], polygon4d[[8]] - polygon4d[[10]]];
+	hat8 = offset[hat2, hat2[[12]] - hat2[[4]]];
+	hat9 = offset[hat3, hat6[[8]] - hat3[[12]] ];
+	turtle2 = offset[rotateAt[turtle1, 60, turtle1[[5]] ], -turtle1[[5]] + hat4[[13]]];
+	hat10 = offset[hat2, -hat2[[7]] + turtle2[[9]] ];
+	hat11 = rotateAt[hat4, 120, hat4[[3 ]] ];
+	hat12 = offset[hat5, -hat5[[5]] + turtle2[[3]]];
+	hat13 = offset[hat12, hat12[[12]]-hat12[[4]] ];
+	hat14 = offset[hat4, -hat4[[5]] + hat12[[9]] ];
+	hat15 = offset[hat1, -hat1[[5]] + turtle2[[13]]];
+	hat16 = offset[hat15, hat15[[12]] - hat15[[4]] ];
+	hat17 = offset[hat5, hat5[[12]] - hat5[[4]] ];
+	hat18 = offset[hat1, -hat1[[12]] + hat12[[14]]];
 
-turtle3 = offset[rotateAt[turtle1, 120, turtle1[[5]] ], -turtle1[[5]] + hat17[[13]]];
-hat19 = offset[ hat3, turtle3[[13]] - hat3[[5]] ];
-hat20 = offset[hat19, hat19[[12]]-hat19[[4]] ];
-hat21 = offset[hat6, hat6[[4]]-hat6[[12]] ];
-hat22 = offset[hat21, hat21[[4]]-hat21[[12]] ];
-hat23 = offset[hat7, hat22[[14]] - hat7[[12]] ];
-hat24 = offset[hat11, - hat11[[5]] + turtle3[[3]] ];
-hat25 = offset[hat24, hat24[[12]] - hat24[[4]] ];
-hat26 = offset[hat12, hat24[[9]]-hat12[[5]] ];
+	turtle3 = offset[rotateAt[turtle1, 120, turtle1[[5]] ], -turtle1[[5]] + hat17[[13]]];
+	hat19 = offset[ hat3, turtle3[[13]] - hat3[[5]] ];
+	hat20 = offset[hat19, hat19[[12]]-hat19[[4]] ];
+	hat21 = offset[hat6, hat6[[4]]-hat6[[12]] ];
+	hat22 = offset[hat21, hat21[[4]]-hat21[[12]] ];
+	hat23 = offset[hat7, hat22[[14]] - hat7[[12]] ];
+	hat24 = offset[hat11, - hat11[[5]] + turtle3[[3]] ];
+	hat25 = offset[hat24, hat24[[12]] - hat24[[4]] ];
+	hat26 = offset[hat12, hat24[[9]]-hat12[[5]] ];
 
-turtle4 = offset[turtle2, -turtle2[[13]] + hat22[[5]]];
-hat27 = offset[hat19, -hat19[[12]] + hat24[[14]] ];
-hat28 = offset[hat26, -hat26[[5]] + turtle4[[3]] ];
-hat29 = offset[hat28, hat28[[12]]-hat28[[4]] ];
-hat30 = offset[hat2, -hat2[[5]]+hat22[[9]] ];
-hat31 = offset[hat9, hat9[[4]]-hat9[[12]] ];
-hat32 = offset[hat31, -hat31[[12]]+turtle4[[6]]];
-hat33 = offset[hat24, -hat24[[5]]+hat32[[1]]];
-hat34 = offset[hat6, -hat6[[14]]+hat7[[12]]];
+	turtle4 = offset[turtle2, -turtle2[[13]] + hat22[[5]]];
+	hat27 = offset[hat19, -hat19[[12]] + hat24[[14]] ];
+	hat28 = offset[hat26, -hat26[[5]] + turtle4[[3]] ];
+	hat29 = offset[hat28, hat28[[12]]-hat28[[4]] ];
+	hat30 = offset[hat2, -hat2[[5]]+hat22[[9]] ];
+	hat31 = offset[hat9, hat9[[4]]-hat9[[12]] ];
+	hat32 = offset[hat31, -hat31[[12]]+turtle4[[6]]];
+	hat33 = offset[hat24, -hat24[[5]]+hat32[[1]]];
+	hat34 = offset[hat6, -hat6[[14]]+hat7[[12]]];
 
-turtle5 = offset[turtle1, -turtle1[[1]]+hat31[[7]]];
-hat35 = offset[hat2, -hat2[[5]] + turtle5[[13]]];
-hat36 = offset[hat35, hat35[[12]] - hat35[[4]]];
-hat37 = offset[hat7, -hat7[[5]] + hat35[[9]]];
-hat38 = offset[hat28, -hat28[[12]] + hat32[[8]]];
-hat39 = offset[hat6, -hat6[[12]] + turtle5[[6]]];
+	turtle5 = offset[turtle1, -turtle1[[1]]+hat31[[7]]];
+	hat35 = offset[hat2, -hat2[[5]] + turtle5[[13]]];
+	hat36 = offset[hat35, hat35[[12]] - hat35[[4]]];
+	hat37 = offset[hat7, -hat7[[5]] + hat35[[9]]];
+	hat38 = offset[hat28, -hat28[[12]] + hat32[[8]]];
+	hat39 = offset[hat6, -hat6[[12]] + turtle5[[6]]];
 
-polygons = {
-	turtle1,	hat1,	hat2,	hat3,	hat4,	hat5,	hat6,	hat7,	hat8,	hat9,
-	turtle2,	hat10,	hat11,	hat12,	hat13,	hat14,	hat15,	hat16,	hat17,	hat18,
-	turtle3,	hat19,	hat20,	hat21,	hat22,	hat23,	hat24,	hat25,	hat26,
-	turtle4,	hat27,	hat28, 	hat29, hat30, hat31, hat32, hat33, hat34,
-	turtle5, hat35, hat36, hat37, hat38, hat39
-};
+	polygons = {
+		turtle1,	hat1,	hat2,	hat3,	hat4,	hat5,	hat6,	hat7,	hat8,	hat9,
+		turtle2,	hat10,	hat11,	hat12,	hat13,	hat14,	hat15,	hat16,	hat17,	hat18,
+		turtle3,	hat19,	hat20,	hat21,	hat22,	hat23,	hat24,	hat25,	hat26,
+		turtle4,	hat27,	hat28, 	hat29, hat30, hat31, hat32, hat33, hat34,
+		turtle5, hat35, hat36, hat37, hat38, hat39
+	};
+	polygons
+];
+
+getHatTiling[polygon4d_] := Module[
+	{flippedPolygon, turtle1, hat1},
+
+	flippedPolygon = polygon4d.flipDimensions;
+	turtle1 = polygon4d;
+	hat1 = rotateAt[offset[flippedPolygon, - flippedPolygon[[6]] + polygon4d[[14]]], 30, polygon4d[[14]]];
+	polygons = {
+		turtle1
+	};
+	polygons
+];
+
+getTiling[polygon4d_] := If[shape == "spectre_4d",
+	getSpectreTiling[polygon4d],
+	getHatTiling[polygon4d]
+];
+
+polygons = getTiling[polygon4d];
 
 If[singleTile, polygons = polygons[[{1}]]];
 
@@ -428,12 +455,5 @@ polygons = Map[offset[#, - center ]&, polygons];
 	exportImage[polygons, id/6*Pi/2, id, "test"];
 ];
  *)
-Print["4D skew polygon"];
-Map[Print, polygon4d];
-Print[];
-Print["projection matrix"]
-Map[Print, projection43[t][[{1, 2}]] ];
-
-Exit[];
 
 exportAnimation[];
