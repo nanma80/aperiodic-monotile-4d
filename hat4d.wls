@@ -12,10 +12,10 @@ python -m SimpleHTTPServer 8000
 
 (* global config *)
 
-(* frameCount = 2; *)
+frameCount = 2;
 (* frameCount = 5; *)
 (* frameCount = 10; *)
-frameCount = 100;
+(* frameCount = 100; *)
 (* frameCount = 60; *)
 
 (* topView = False; *)
@@ -31,8 +31,11 @@ shape = "spectre_4d";
 (* shape = "hat_4d"; *)
 
 (* meshMethod = ""; *)
-(* meshMethod = "design1"; *)
-meshMethod = "design2";
+meshMethod = "design1";
+(* meshMethod = "design2"; *)
+
+(* rotationDirection = ""; *)
+rotationDirection = "3rdDim";
 
 exportToPov = True;
 dataFolder = "data";
@@ -42,7 +45,7 @@ imageSize = 720/3 * {4, 3};
 range = If[singleTile, 3, If[shape == "spectre", 10, 8]]; (* change to 10 *)
 thickness = 0.05;
 
-shapeWithParams = shape <> If[topView, "", "_sideView"] <> If[fullRotation, "", "_quarterTurn"] <> If[singleTile, "_singleTile", ""] <> If[meshMethod == "", "", "_" <> meshMethod] <> "_" <> IntegerString[frameCount];
+shapeWithParams = shape <> If[topView, "", "_sideView"] <> If[fullRotation, "", "_quarterTurn"] <> If[singleTile, "_singleTile", ""] <> If[meshMethod == "", "", "_" <> meshMethod] <> If[rotationDirection == "", "", "_" <> rotationDirection] <> "_" <> IntegerString[frameCount];
 
 rangeFactor = 3.0;
 originalProjectionMatrixH4 = {
@@ -115,7 +118,7 @@ getHue[v3d_] := If[Norm[v3d[[{1, 2}]]] < 0.001,
 ];
 
 
-exportImage[polygons_, theta_, serialNumber_, frameFolder_] := Module[
+exportImage[polygons_, theta_, sigma_, serialNumber_, frameFolder_] := Module[
 	{
 		dataFileName,
 		shapeTokens,
@@ -151,7 +154,7 @@ exportImage[polygons_, theta_, serialNumber_, frameFolder_] := Module[
 
 	cropCommand = "mogrify -crop " <> IntegerString[imageSize[[2]]] <> "x" <> IntegerString[imageSize[[2]]] <> "+" <> IntegerString[(imageSize[[1]]-imageSize[[2]])/2] <> "+0 " <> outputFileName;
 
-	projectionMatrix = Transpose[lightingRotation].projection43[theta];
+	projectionMatrix = Transpose[lightingRotation].projection43[theta, sigma];
 
 	projectedPolygons = Map[projectionMatrix.#&, polygons, {2}];
 	edges3d = Flatten[Map[getEdgesFromFace, projectedPolygons], 1];
@@ -314,6 +317,12 @@ exportAnimation[] := Module[
 		angles = Join[angles, angles + 180];
 	];
 
+	If[rotationDirection == "3rdDim",
+		If[fullRotation,
+			angles = Range[12 * frameCount]/12/frameCount * 360;
+			, angles = Range[3 * frameCount]/3/frameCount * 90;
+		];
+	];
 	(* Print[angles];	Exit[]; *)
 
 	For[frameIndex = 1, frameIndex <= Length[angles], frameIndex++,
@@ -323,11 +332,14 @@ exportAnimation[] := Module[
 		(* If[frameIndex != 2, Continue[]]; *)
 		angle = angles[[frameIndex]];
 		Print["exporting frame " <> IntegerString[frameIndex] <> " / " <> IntegerString[Length[angles]] <> " angle: " <> ToString[angle] ];
-		exportImage[polygons, angle/180.0 * Pi, frameIndex, frameFolder];
+		If[rotationDirection == "3rdDim",
+			exportImage[polygons, Pi/6, angle/180.0 * Pi, frameIndex, frameFolder]
+			, exportImage[polygons, angle/180.0 * Pi, Pi/4, frameIndex, frameFolder]
+		];
 		(* Exit[]; *)
 	];
 
-	(* Exit[]; *)
+	Exit[];
     delay = If[frameCount > 10, 3, 50];
 
     (* gifCommand = "magick convert -duplicate 1,-2-1 -quiet +repage -alpha remove -loop 0 -delay "   *)
@@ -401,12 +413,11 @@ projection44[t_] := {
 };
 
 (* projection43[t_] := projection44[t][[{1, 2, 3}]]; *)
-projection43[t_] := {
+projection43[t_, s_] := {
 	projection44[t][[1]],
 	projection44[t][[2]],
-	(projection44[t][[3]] + projection44[t][[4]])/Sqrt[2]
+	(projection44[t][[3]] Cos[s] + projection44[t][[4]] Sin[s])
 };
-
 
 flipDimensions = {
 	{0, 0, 1, 0},
