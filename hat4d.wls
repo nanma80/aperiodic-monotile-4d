@@ -12,11 +12,11 @@ python -m SimpleHTTPServer 8000
 
 (* global config *)
 
-frameCount = 2;
+(* frameCount = 2; *)
 (* frameCount = 5; *)
 (* frameCount = 10; *)
 (* frameCount = 100; *)
-(* frameCount = 60; *)
+frameCount = 60;
 
 (* topView = False; *)
 topView = True;
@@ -326,7 +326,7 @@ exportAnimation[] := Module[
 	(* Print[angles];	Exit[]; *)
 
 	For[frameIndex = 1, frameIndex <= Length[angles], frameIndex++,
-		(* Continue[]; *)
+		Continue[];
 		(* If[frameIndex < 31, Continue[]]; *)
 		(* If[Mod[frameIndex, 2] == 1 && frameIndex > 1, Continue[]]; *)
 		(* If[frameIndex != 2, Continue[]]; *)
@@ -339,7 +339,7 @@ exportAnimation[] := Module[
 		(* Exit[]; *)
 	];
 
-	Exit[];
+	(* Exit[]; *)
     delay = If[frameCount > 10, 3, 50];
 
     (* gifCommand = "magick convert -duplicate 1,-2-1 -quiet +repage -alpha remove -loop 0 -delay "   *)
