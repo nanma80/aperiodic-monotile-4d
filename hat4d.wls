@@ -21,8 +21,8 @@ frameCount = 60;
 (* topView = False; *)
 topView = True;
 
-singleTile = False;
-(* singleTile = True; *)
+(* singleTile = False; *)
+singleTile = True;
 
 (* fullRotation = False; *)
 fullRotation = True;
@@ -31,11 +31,12 @@ shape = "spectre_4d";
 (* shape = "hat_4d"; *)
 
 (* meshMethod = ""; *)
-meshMethod = "design1";
+(* meshMethod = "design1"; *)
 (* meshMethod = "design2"; *)
+meshMethod = "noFaces";
 
-(* rotationDirection = ""; *)
-rotationDirection = "3rdDim";
+rotationDirection = "";
+(* rotationDirection = "3rdDim"; *)
 
 exportToPov = True;
 dataFolder = "data";
@@ -159,7 +160,7 @@ exportImage[polygons_, theta_, sigma_, serialNumber_, frameFolder_] := Module[
 	projectedPolygons = Map[projectionMatrix.#&, polygons, {2}];
 	edges3d = Flatten[Map[getEdgesFromFace, projectedPolygons], 1];
 	uniqueEdges3d = Union[edges3d, SameTest -> sameCenter];
-	Print[Map[Length, {edges3d, uniqueEdges3d}]];
+	(* Print[Map[Length, {edges3d, uniqueEdges3d}]]; *)
 
 	facesByPolygons = {};
 	For[pid = 1, pid <= Length[projectedPolygons], pid++,
@@ -175,6 +176,7 @@ exportImage[polygons_, theta_, sigma_, serialNumber_, frameFolder_] := Module[
 					{polygonCenter, projectedPolygon[[12]], projectedPolygon[[2]]}
 				}];
 		];
+
 		If[meshMethod == "design1",
 			p = projectedPolygon;
 			q1 = p[[12]] + p[[14]] - p[[13]];
@@ -239,7 +241,7 @@ exportImage[polygons_, theta_, sigma_, serialNumber_, frameFolder_] := Module[
 	(* faces = {projectedPolygon}; *)
 	(* faces = Map[{#[[1]], #[[2]], polygonCenter}&, edges3d]; *)
 
-	edgeColor = White;
+	edgeColor = If[meshMethod == "noFaces", Blue, White];
 
 	graphElements = {
 		{
@@ -312,7 +314,7 @@ exportAnimation[] := Module[
 
 	If[fullRotation,
 		angles = Join[angles, 
-			Table[smoothFallFromTo[x, 0, 1, 90, 180]//N, {x, 0, 1, 1/(2 * frameCount - 1)}]
+			Table[smoothFallFromTo[x, 0, 1, 90, 180]//N, {x, 0, 1, 1/(2 * frameCount)}]
 		];
 		angles = Join[angles, angles + 180];
 	];
@@ -326,20 +328,20 @@ exportAnimation[] := Module[
 	(* Print[angles];	Exit[]; *)
 
 	For[frameIndex = 1, frameIndex <= Length[angles], frameIndex++,
-		Continue[];
+		(* Continue[]; *)
 		(* If[frameIndex < 31, Continue[]]; *)
 		(* If[Mod[frameIndex, 2] == 1 && frameIndex > 1, Continue[]]; *)
 		(* If[frameIndex != 2, Continue[]]; *)
 		angle = angles[[frameIndex]];
 		Print["exporting frame " <> IntegerString[frameIndex] <> " / " <> IntegerString[Length[angles]] <> " angle: " <> ToString[angle] ];
 		If[rotationDirection == "3rdDim",
-			exportImage[polygons, Pi/6, angle/180.0 * Pi, frameIndex, frameFolder]
+			exportImage[polygons, Pi/4, angle/180.0 * Pi, frameIndex, frameFolder]
 			, exportImage[polygons, angle/180.0 * Pi, Pi/4, frameIndex, frameFolder]
 		];
 		(* Exit[]; *)
 	];
 
-	(* Exit[]; *)
+	Exit[];
     delay = If[frameCount > 10, 3, 50];
 
     (* gifCommand = "magick convert -duplicate 1,-2-1 -quiet +repage -alpha remove -loop 0 -delay "   *)
@@ -411,6 +413,7 @@ projection44[t_] := {
 	{-Sin[t], 0, Cos[t], 0},
 	{0, -Sin[t], 0, Cos[t]}
 };
+
 
 (* projection43[t_] := projection44[t][[{1, 2, 3}]]; *)
 projection43[t_, s_] := {
