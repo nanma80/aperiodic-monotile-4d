@@ -15,25 +15,25 @@ python -m SimpleHTTPServer 8000
 (* frameCount = 2; *)
 (* frameCount = 5; *)
 (* frameCount = 10; *)
-(* frameCount = 100; *)
-frameCount = 60;
+frameCount = 100;
+(* frameCount = 60; *)
 
 (* topView = False; *)
 topView = True;
 
-(* singleTile = False; *)
-singleTile = True;
+singleTile = False;
+(* singleTile = True; *)
 
 (* fullRotation = False; *)
 fullRotation = True;
 
-shape = "spectre_4d";
-(* shape = "hat_4d"; *)
+(* shape = "spectre_4d"; *)
+shape = "hat_4d";
 
 (* meshMethod = ""; *)
-(* meshMethod = "design1"; *)
+meshMethod = "design1";
 (* meshMethod = "design2"; *)
-meshMethod = "noFaces";
+(* meshMethod = "noFaces"; *)
 
 rotationDirection = "";
 (* rotationDirection = "3rdDim"; *)
@@ -341,7 +341,7 @@ exportAnimation[] := Module[
 		(* Exit[]; *)
 	];
 
-	Exit[];
+	(* Exit[]; *)
     delay = If[frameCount > 10, 3, 50];
 
     (* gifCommand = "magick convert -duplicate 1,-2-1 -quiet +repage -alpha remove -loop 0 -delay "   *)
