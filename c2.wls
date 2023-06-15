@@ -43,7 +43,7 @@ dataFolder = "data";
 imageFolder = "output";
 imageSize = 720/3 * {4, 3};
 
-truncateThreshold = 1;
+truncateThreshold = 4;
 
 range = 10;
 (* If[singleTile, 3, If[shape == "spectre", 10, 8]]; (* change to 10 *) *)
@@ -201,7 +201,7 @@ exportImage[cells_, theta_, sigma_, serialNumber_, frameFolder_] := Module[
 	If[exportToPov,
 		If[FileExistsQ[outputFileName], DeleteFile[outputFileName]];
 		POVRayRender[graph, Method -> "Triangle", OutputPath -> outputFileName, ImageSize -> imageSize, RenderOptions -> "+A0.001 -J +UA"];
-		Run[cropCommand];
+		(* Run[cropCommand]; *)
 		,
 		Export[outputFileName, graph, ImageSize -> imageSize[[2]]];
 	]
@@ -412,6 +412,7 @@ cellCenters = Map[getCellCenter[#]&, cells];
 (* for spectre tiling *)
 (* 0.45887043288175683 - 0.615639288473018*I *)
 targetComplexSlope = ( (5 Sqrt[3] - Sqrt[5]) + I * (3 - 3 * Sqrt[15]) ) /14;
+targetComplexSlope = 1/targetComplexSlope;
 slopeVector1 = {1, 0, - Re[targetComplexSlope], Im[targetComplexSlope]}//N;
 slopeVector2 = {0, 1, - Im[targetComplexSlope], -Re[targetComplexSlope]}//N;
 
@@ -458,191 +459,9 @@ Print["cells to keep: " <> IntegerString[Length[cellsToKeep]]];
 cells = cells[[cellsToKeep]];
 
 exportImage[cells, Pi/4, Pi/4, 45, "test"];
-(* exportImage[cells, Pi/6, Pi/4, 30, "test"]; *)
-(* exportImage[cells, Pi/3, Pi/4, 60, "test"]; *)
+exportImage[cells, Pi/6, Pi/4, 30, "test"];
+exportImage[cells, Pi/3, Pi/4, 60, "test"];
 
 
 Exit[];
 
-polygon4d = {{0, 0, 0, 0}};
-For[vid = 2, vid <= 14, vid++,
-	lastPoint = Last[polygon4d];
-	newPoint = lastPoint + directions[[ directionsInPolygon[[vid]] ]];
-	AppendTo[polygon4d, newPoint];
-];
-
-triangleIds = {
-	{14, 1, 2},
-	{2, 14, 12},
-	{12, 13, 14},
-	{2, 3, 4},
-	{2, 4, 5},
-	{5, 6, 7},
-	{7, 8, 9},
-	{7, 9, 11},
-	{7, 11, 12}
-};
-
-
-getSpectreTiling[polygon4d_] := Module[
-	{flippedPolygon, turtle1, hat1},
-
-	flippedPolygon = polygon4d.flipDimensions;
-	turtle1 = polygon4d;
-	hat1 = rotateAt[offset[flippedPolygon, - flippedPolygon[[6]] + polygon4d[[14]]], 30, polygon4d[[14]]];
-	hat2 = offset[ rotateAt[hat1, -60, polygon4d[[14]]], polygon4d[[12]] - polygon4d[[14]] ];
-	hat3 = offset[ rotateAt[hat1, 60, polygon4d[[14]]], polygon4d[[2]] - polygon4d[[14]] ];
-	hat4 = offset[ hat3, hat3[[12]] - hat3[[4]] ];
-	hat5 = offset[rotateAt[hat3, 60, polygon4d[[1]] ], hat3[[3]] - hat3[[7]] ];
-	hat6 = offset[hat1, polygon4d[[4]] - hat1[[14]]];
-	hat7 = offset[ rotateAt[hat2, -60, polygon4d[[10]]  ], polygon4d[[8]] - polygon4d[[10]]];
-	hat8 = offset[hat2, hat2[[12]] - hat2[[4]]];
-	hat9 = offset[hat3, hat6[[8]] - hat3[[12]] ];
-	turtle2 = offset[rotateAt[turtle1, 60, turtle1[[5]] ], -turtle1[[5]] + hat4[[13]]];
-	hat10 = offset[hat2, -hat2[[7]] + turtle2[[9]] ];
-	hat11 = rotateAt[hat4, 120, hat4[[3 ]] ];
-	hat12 = offset[hat5, -hat5[[5]] + turtle2[[3]]];
-	hat13 = offset[hat12, hat12[[12]]-hat12[[4]] ];
-	hat14 = offset[hat4, -hat4[[5]] + hat12[[9]] ];
-	hat15 = offset[hat1, -hat1[[5]] + turtle2[[13]]];
-	hat16 = offset[hat15, hat15[[12]] - hat15[[4]] ];
-	hat17 = offset[hat5, hat5[[12]] - hat5[[4]] ];
-	hat18 = offset[hat1, -hat1[[12]] + hat12[[14]]];
-
-	turtle3 = offset[rotateAt[turtle1, 120, turtle1[[5]] ], -turtle1[[5]] + hat17[[13]]];
-	hat19 = offset[ hat3, turtle3[[13]] - hat3[[5]] ];
-	hat20 = offset[hat19, hat19[[12]]-hat19[[4]] ];
-	hat21 = offset[hat6, hat6[[4]]-hat6[[12]] ];
-	hat22 = offset[hat21, hat21[[4]]-hat21[[12]] ];
-	hat23 = offset[hat7, hat22[[14]] - hat7[[12]] ];
-	hat24 = offset[hat11, - hat11[[5]] + turtle3[[3]] ];
-	hat25 = offset[hat24, hat24[[12]] - hat24[[4]] ];
-	hat26 = offset[hat12, hat24[[9]]-hat12[[5]] ];
-
-	turtle4 = offset[turtle2, -turtle2[[13]] + hat22[[5]]];
-	hat27 = offset[hat19, -hat19[[12]] + hat24[[14]] ];
-	hat28 = offset[hat26, -hat26[[5]] + turtle4[[3]] ];
-	hat29 = offset[hat28, hat28[[12]]-hat28[[4]] ];
-	hat30 = offset[hat2, -hat2[[5]]+hat22[[9]] ];
-	hat31 = offset[hat9, hat9[[4]]-hat9[[12]] ];
-	hat32 = offset[hat31, -hat31[[12]]+turtle4[[6]]];
-	hat33 = offset[hat24, -hat24[[5]]+hat32[[1]]];
-	hat34 = offset[hat6, -hat6[[14]]+hat7[[12]]];
-
-	turtle5 = offset[turtle1, -turtle1[[1]]+hat31[[7]]];
-	hat35 = offset[hat2, -hat2[[5]] + turtle5[[13]]];
-	hat36 = offset[hat35, hat35[[12]] - hat35[[4]]];
-	hat37 = offset[hat7, -hat7[[5]] + hat35[[9]]];
-	hat38 = offset[hat28, -hat28[[12]] + hat32[[8]]];
-	hat39 = offset[hat6, -hat6[[12]] + turtle5[[6]]];
-
-	polygons = {
-		turtle1,	hat1,	hat2,	hat3,	hat4,	hat5,	hat6,	hat7,	hat8,	hat9,
-		turtle2,	hat10,	hat11,	hat12,	hat13,	hat14,	hat15,	hat16,	hat17,	hat18,
-		turtle3,	hat19,	hat20,	hat21,	hat22,	hat23,	hat24,	hat25,	hat26,
-		turtle4,	hat27,	hat28, 	hat29, hat30, hat31, hat32, hat33, hat34,
-		turtle5, hat35, hat36, hat37, hat38, hat39
-	};
-	polygons
-];
-
-getHatTiling[polygon4d_] := Module[
-	{flippedPolygon, hat1},
-
-	flippedPolygon = polygon4d.flipDimensions;
-	hat1 = rotateAt[flippedPolygon, 30, flippedPolygon[[1]]];
-	mirror1 = rotateAt[ hat1.mirror4D, -120, hat1[[1]] ];
-	mirror1 = offset[mirror1, -mirror1[[11]] + hat1[[5]] ];
-	hat2 = rotateAt[hat1, -120, hat1[[1]] ];
-	hat2 = offset[hat2, -hat2[[5]] + mirror1[[1]]];
-	hat3 = offset[hat1, -hat1[[12]] + mirror1[[6]]];
-	hat4 = rotateAt[hat2, 60, hat2[[1]]];
-	hat4 = offset[hat4, -hat4[[5]] + hat1[[9]]];
-	hat5 = offset[hat1, -hat1[[5]] + hat1[[11]]];
-
-	hat6 = rotateAt[hat4, 120, hat4[[1]]];
-	hat6 = offset[hat6, -hat6[[5]] + mirror1[[9]]];
-	hat7 = rotateAt[hat5, 120, hat5[[1]]];
-	hat7 = offset[hat7, -hat7[[5]] + hat3[[1]]];
-
-	hat8 = offset[hat6, -hat6[[12]] + hat3[[8]]];
-	hat9 = offset[hat1, -hat1[[2]] + hat8[[8]] ];
-
-	hat10 = offset[hat7, -hat7[[12]] + hat2[[14]]];
-	hat11 = rotateAt[hat10, 60, hat10[[1]]];
-	hat11 = offset[hat11, -hat11[[8]] + hat10[[2]] ];
-
-	mirror2 = rotateAt[mirror1, -60, mirror1[[1]]];
-	mirror2 = offset[mirror2, -mirror2[[9]] + hat9[[5]] ];
-
-	hat12 = offset[hat4, -hat4[[5]] + mirror2[[11]] ];
-	hat13 = offset[hat4, -hat4[[12]] + mirror2[[6]]];
-
-	hat14 = offset[hat13, -hat13[[11]] +hat13[[5]]];
-	hat15 = offset[hat3, -hat3[[11]] +hat3[[5]]];
-	hat16 = offset[hat2, -hat2[[12]] + hat1[[14]]];
-	hat17 = offset[hat11, -hat11[[14]] + hat6[[12]]];
-	hat18 = offset[hat13, -hat13[[12]] + hat6[[14]]];
-
-	mirror3 = rotateAt[mirror1, 60, mirror1[[1]] ];
-	mirror3 = offset[mirror3, -mirror3[[2]] + hat18[[6]] ];
-	hat19 = offset[hat6, -hat6[[12]] + mirror3[[6]] ];
-	hat20 = offset[hat19, -hat19[[11]] +hat19[[5]]];
-	hat21 = offset[hat20, -hat20[[11]] +hat20[[5]]];
-
-	mirror4 = offset[mirror3, -mirror3[[12]] +hat21[[6]]];
-	hat22 = offset[hat21, -hat21[[12]] + mirror4[[6]] ];
-	hat23 = offset[hat3, -hat3[[12]] + hat13[[8]] ];
-
-
-
-
-	polygons = {
-		hat1, hat2, hat3, hat4, hat5, hat6, hat7, hat8, hat9, hat10, hat11,
-		hat12, hat13, hat14, hat15, hat16, hat17, hat18, hat19, hat20, hat21,
-		hat22, hat23,
-		mirror1, mirror2, mirror3, mirror4
-	};	
-	polygons
-];
-
-getTiling[polygon4d_] := If[shape == "spectre_4d",
-	getSpectreTiling[polygon4d],
-	getHatTiling[polygon4d]
-];
-
-polygons = getTiling[polygon4d];
-
-If[singleTile, polygons = polygons[[{1}]]];
-
-(* polygons = Map[offset[#, - If[singleTile, Mean[turtle1], hat6[[3]] ] ]&, polygons]; *)
-vector12s = Map[(Transpose[{{1, 0}, {0, 1}, {1, 0}, {0, 1}}].(#[[2]] - #[[1]]))&, polygons];
-colors = Map[ Hue[ Mod[Arg[#[[1]] + I #[[2]]]/2/Pi , 1] ]&, vector12s];
-
-center = Mean[Map[Mean, polygons]];
-polygons = Map[offset[#, - center ]&, polygons];
-
-polygonCenters = Map[Mean, polygons];
-polygonComplexCenters = Map[ {#[[1]] + I #[[2]], #[[3]] + I #[[4]]}&, polygonCenters ];
-
-polygonComplexCentersOffset = Map[# - polygonComplexCenters[[1]] &, polygonComplexCenters ];
-polygonComplexCentersOffset = Select[polygonComplexCentersOffset, Norm[#] > epsilon&];
-
-(* Map[Print[N[#]]&, polygonComplexCentersOffset]; *)
-slopes = Map[ #[[1]]/#[[2]] &, polygonComplexCentersOffset ];
-
-(* for spectre tiling *)
-(* 0.45887043288175683 - 0.615639288473018*I *)
-complexSlope = ( (5 Sqrt[3] - Sqrt[5]) + I * (3 - 3 * Sqrt[15]) ) /14;
-
-
-(* for hat tiling, avg slope is 0.47 - 0.42 I *)
-Print[Mean[slopes//N]];
-Print[N[complexSlope]];
-
-(* For[id = 0, id <= 6 * 4, id++,
-	exportImage[polygons, id/6*Pi/2, id, "test"];
-];
- *)
-
-(* exportAnimation[]; *)
