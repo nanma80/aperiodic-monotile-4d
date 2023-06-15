@@ -18,8 +18,8 @@ python -m SimpleHTTPServer 8000
 frameCount = 100;
 (* frameCount = 60; *)
 
-(* topView = False; *)
-topView = True;
+topView = False;
+(* topView = True; *)
 
 (* singleTile = False; *)
 singleTile = True;
@@ -38,14 +38,16 @@ meshMethod = "design1";
 rotationDirection = "";
 (* rotationDirection = "3rdDim"; *)
 
-exportToPov = False;
+exportToPov = True;
 dataFolder = "data";
 imageFolder = "output";
 imageSize = 720/3 * {4, 3};
 
-range = 6;
+truncateThreshold = 2;
+
+range = 10;
 (* If[singleTile, 3, If[shape == "spectre", 10, 8]]; (* change to 10 *) *)
-thickness = 0.05;
+thickness = 0.02;
 
 shapeWithParams = shape <> If[topView, "", "_sideView"] <> If[fullRotation, "", "_quarterTurn"] <> If[singleTile, "_singleTile", ""] <> If[meshMethod == "", "", "_" <> meshMethod] <> If[rotationDirection == "", "", "_" <> rotationDirection] <> "_" <> IntegerString[frameCount];
 
@@ -162,36 +164,33 @@ exportImage[cells_, theta_, sigma_, serialNumber_, frameFolder_] := Module[
 	projectedCells = Map[projectionMatrix.#&, cells, {3}];
 
 	faces3d = Flatten[projectedCells, 1];
-
-
-	(* edges3d = Flatten[Map[getEdgesFromFace, projectedPolygons], 1]; *)
+	edges3d = Flatten[Map[getEdgesFromFace, faces3d], 1];
+	(* vertices3d = Flatten[edges3d, 1]; *)
 	(* uniqueEdges3d = Union[edges3d, SameTest -> sameCenter]; *)
 	(* Print[Map[Length, {edges3d, uniqueEdges3d}]]; *)
 
 	(* facesByPolygons = Table[Map[projectedPolygons[[k]][[#]]&, triangleIds ], {k, 1, Length[projectedPolygons]}]; *)
 
-	edgeColor = If[meshMethod == "noFaces", Blue, Red];
+	edgeColor = If[meshMethod == "noFaces", Blue, White];
 	faceColor = Blue;
 
 	graphElements = {
-		(* {
+		{
 			FaceForm[edgeColor], Map[Cylinder[#, thickness]&, edges3d]
-		}, *)
-		(* {
-			FaceForm[edgeColor], Map[Sphere[#, 2 thickness]&, Flatten[projectedPolygons, 1]]
-		}, *)
+		},
+		{
+			FaceForm[edgeColor], Map[Sphere[#, 2 thickness]&, Flatten[edges3d, 1]]
+		},
 		Table[
 			{
-				FaceForm[faceColor ], EdgeForm[edgeColor], Opacity[1], Polygon[faces3d[[k]] ]
+				FaceForm[faceColor ], Opacity[1], Polygon[faces3d[[k]] ]
 			},
 		{k, Length[faces3d]}]
-		
 	};
-
 
 	graph = Graphics3D[
 		graphElements,
-		ViewPoint -> If[topView, {0, 0, 1}, {0.3, -0.4, 1}].lightingRotation * 1000,
+		ViewPoint -> If[topView, {0, 0, 1}, {1.0, -1.0, 0.1}].lightingRotation * 1000,
 		ViewVertical -> {0, 1, 0}.lightingRotation,
 		PlotRange -> {{-range, range}, {-range, range}, {-range, range}},
 		(* Lighting -> lighting, *)
@@ -391,45 +390,21 @@ rotate[angle1_, angle2_] := ArrayFlatten[{
 move[cells_, offset_] := Map[# + offset &, cells, {3}];
 rotateCell[cell_, angle1_, angle2_] := Map[rotate[angle1, angle2].# &, cell, {2} ];
 
-(* cells = {
-	Map[rotate[0, 0].# &, cell1, {2} ],
-	Map[rotate[120, 0].# &, cell1, {2} ],
-	Map[rotate[240, 0].# &, cell1, {2} ],
+gridThreshold = Round[truncateThreshold * 1.5];
+triangleGrid = Flatten[Table[{a + b Cos[Pi/3], b Sin[Pi/3]}, {a, -gridThreshold, gridThreshold}, {b, -gridThreshold, gridThreshold}], 1];
 
-	Map[rotate[0, 120].# &, cell1, {2} ],
-	Map[rotate[120, 120].# &, cell1, {2} ],
-	Map[rotate[240, 120].# &, cell1, {2} ],
-
-	Map[rotate[0, 240].# &, cell1, {2} ],
-	Map[rotate[120, 240].# &, cell1, {2} ],
-	Map[rotate[240, 240].# &, cell1, {2} ]
-};
- *)
+triangleGrid = Select[triangleGrid, Norm[#] < truncateThreshold + epsilon & ];
 
 cells = {cell1};
-cells = Union[cells, Map[rotateCell[#, 120, 0]&, cells], Map[rotateCell[#, 240, 0]&, cells], SameTest -> sameCellCenter];
-Print[Length[cells]];
-cells = Union[cells, Map[rotateCell[#, 0, 120]&, cells], Map[rotateCell[#, 0, 240]&, cells], SameTest -> sameCellCenter];
-Print[Length[cells]];
-
-cells = Union[cells, move[cells, { 2 Sqrt[3], 0, 0, 0 } ], SameTest -> sameCellCenter];
-Print[Length[cells]];
-cells = Union[cells, move[cells, { 0, 0, 0, 2 Sqrt[3] } ], SameTest -> sameCellCenter];
-Print[Length[cells]];
-cells = Union[cells, Map[rotateCell[#, 120, 0]&, cells], Map[rotateCell[#, 240, 0]&, cells], SameTest -> sameCellCenter];
-Print[Length[cells]];
-cells = Union[cells, Map[rotateCell[#, 0, 120]&, cells], Map[rotateCell[#, 0, 240]&, cells], SameTest -> sameCellCenter];
+cells = Join[cells, Map[rotateCell[#, 120, 0]&, cells], Map[rotateCell[#, 240, 0]&, cells]];
+cells = Join[cells, Map[rotateCell[#, 0, 120]&, cells], Map[rotateCell[#, 0, 240]&, cells]];
 Print[Length[cells]];
 
-(* cells = Union[cells, move[cells, { 2 Sqrt[3], 0, 0, 0 } ], SameTest -> sameCellCenter];
+cells = Apply[Join, Map[move[cells, { 2 Sqrt[3] #[[1]], 2 Sqrt[3] #[[2]], 0, 0 } ]&, triangleGrid]];
 Print[Length[cells]];
-cells = Union[cells, move[cells, { 0, 0, 0, 2 Sqrt[3] } ], SameTest -> sameCellCenter];
-Print[Length[cells]];
-cells = Union[cells, Map[rotateCell[#, 120, 0]&, cells], Map[rotateCell[#, 240, 0]&, cells], SameTest -> sameCellCenter];
-Print[Length[cells]];
-cells = Union[cells, Map[rotateCell[#, 0, 120]&, cells], Map[rotateCell[#, 0, 240]&, cells], SameTest -> sameCellCenter];
-Print[Length[cells]]; *)
 
+cells = Apply[Join, Map[move[cells, {0, 0, 2 Sqrt[3] #[[2]], 2 Sqrt[3] #[[1]] } ]&, triangleGrid]];
+Print["Generated cells: " <> IntegerString[Length[cells]]];
 
 cellCenters = Map[getCellCenter[#]&, cells];
 (* cellCenters = Map[getCellCenter[#] - getCellCenter[cell1]&, cells]; *)
@@ -438,24 +413,52 @@ cellCenters = Map[getCellCenter[#]&, cells];
 (* 0.45887043288175683 - 0.615639288473018*I *)
 targetComplexSlope = ( (5 Sqrt[3] - Sqrt[5]) + I * (3 - 3 * Sqrt[15]) ) /14;
 
-polygonComplexCenters = Map[ {#[[1]] + I #[[2]], #[[3]] + I #[[4]]}&, cellCenters ];
-slopes = Map[ #[[1]]/#[[2]] &, polygonComplexCenters ];
+cellsToKeep = {};
+(* complexPerturbation = Table[0.1, {k, 4}]; *)
+complexPerturbation = {0, 1., -1, 0};
 
-slopeThreshold = 0.7;
+triangleArea[triangle_] := Module[
+	{a,b,c,s},
+	a = Norm[ triangle[[1]] - triangle[[2]] ];
+	b = Norm[ triangle[[1]] - triangle[[3]] ];
+	c = Norm[ triangle[[2]] - triangle[[3]] ];
+	s = (a + b + c)/2;
+	Sqrt[s * (s - a) * (s - b) * (s - c)]
+];
 
-selectedSlopes = Select[Range[Length[slopes]], Norm[slopes[[#]] - targetComplexSlope] < slopeThreshold &];
+triangleContainsPoint[triangle_, point_] := Abs[(
+	triangleArea[ { triangle[[1]], triangle[[2]], point } ]
+	+ triangleArea[ { triangle[[1]], triangle[[3]], point } ]
+	+ triangleArea[ { triangle[[2]], triangle[[3]], point } ]
+	- triangleArea[ triangle ] )] < epsilon;
 
-(* Print[targetComplexSlope//N]; *)
-(* Map[Print[N[#]]&, slopes]; *)
+For[cid = 1, cid <= Length[cells], cid++,
+	cell = cells[[cid]];
+	anyFaceCrossingTarget = False;
+	For[fid = 1, fid <= Length[cell], fid++,
+		face = Map[# + complexPerturbation &, cell[[fid]]];
+		complexFace = Map[ {#[[1]] + I #[[2]], #[[3]] + I #[[4]]}&, face];
+		slopes = Map[ #[[1]]/#[[2]] &, complexFace ];
 
-Print[selectedSlopes//Length];
-Print[slopes[[selectedSlopes]]//N];
-Print[targetComplexSlope//N];
+		If[triangleContainsPoint[ slopes[[{1,2,3}]], N[targetComplexSlope] ] || triangleContainsPoint[ slopes[[{3, 4, 1}]], N[targetComplexSlope] ],
+			(* Print["face " <> IntegerString[fid] <> " crossing cell " <> IntegerString[cid]]; *)
+			anyFaceCrossingTarget = True;
+			Break[];
+		];
+	];
+	If[anyFaceCrossingTarget,
+		AppendTo[cellsToKeep, cid];
+	];
+];
 
-cells = cells[[selectedSlopes]];
-
+Print["cells to keep: " <> IntegerString[Length[cellsToKeep]]];
 (* Exit[]; *)
-exportImage[cells, Pi/4, Pi/4, 1, "test"];
+
+cells = cells[[cellsToKeep]];
+
+exportImage[cells, Pi/4, Pi/4, 45, "test"];
+(* exportImage[cells, Pi/6, Pi/4, 30, "test"]; *)
+(* exportImage[cells, Pi/3, Pi/4, 60, "test"]; *)
 
 
 Exit[];
@@ -630,8 +633,6 @@ slopes = Map[ #[[1]]/#[[2]] &, polygonComplexCentersOffset ];
 (* for spectre tiling *)
 (* 0.45887043288175683 - 0.615639288473018*I *)
 complexSlope = ( (5 Sqrt[3] - Sqrt[5]) + I * (3 - 3 * Sqrt[15]) ) /14;
-
-Map[Print[N[#]]&, slopes];
 
 
 (* for hat tiling, avg slope is 0.47 - 0.42 I *)
