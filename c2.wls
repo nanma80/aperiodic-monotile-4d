@@ -18,8 +18,8 @@ python -m SimpleHTTPServer 8000
 frameCount = 100;
 (* frameCount = 60; *)
 
-topView = False;
-(* topView = True; *)
+(* topView = False; *)
+topView = True;
 
 (* singleTile = False; *)
 singleTile = True;
@@ -43,7 +43,7 @@ dataFolder = "data";
 imageFolder = "output";
 imageSize = 720/3 * {4, 3};
 
-truncateThreshold = 2;
+truncateThreshold = 1;
 
 range = 10;
 (* If[singleTile, 3, If[shape == "spectre", 10, 8]]; (* change to 10 *) *)
@@ -165,9 +165,9 @@ exportImage[cells_, theta_, sigma_, serialNumber_, frameFolder_] := Module[
 
 	faces3d = Flatten[projectedCells, 1];
 	edges3d = Flatten[Map[getEdgesFromFace, faces3d], 1];
-	(* vertices3d = Flatten[edges3d, 1]; *)
+	(* uniqueFaces3d = Union[faces3d, SameTest -> sameCenter]; *)
 	(* uniqueEdges3d = Union[edges3d, SameTest -> sameCenter]; *)
-	(* Print[Map[Length, {edges3d, uniqueEdges3d}]]; *)
+	(* Print[Map[Length, {faces3d, uniqueFaces3d, edges3d, uniqueEdges3d}]]; *)
 
 	(* facesByPolygons = Table[Map[projectedPolygons[[k]][[#]]&, triangleIds ], {k, 1, Length[projectedPolygons]}]; *)
 
@@ -412,35 +412,36 @@ cellCenters = Map[getCellCenter[#]&, cells];
 (* for spectre tiling *)
 (* 0.45887043288175683 - 0.615639288473018*I *)
 targetComplexSlope = ( (5 Sqrt[3] - Sqrt[5]) + I * (3 - 3 * Sqrt[15]) ) /14;
+slopeVector1 = {1, 0, - Re[targetComplexSlope], Im[targetComplexSlope]}//N;
+slopeVector2 = {0, 1, - Im[targetComplexSlope], -Re[targetComplexSlope]}//N;
 
 cellsToKeep = {};
 (* complexPerturbation = Table[0.1, {k, 4}]; *)
-complexPerturbation = {0, 1., -1, 0};
-
-triangleArea[triangle_] := Module[
-	{a,b,c,s},
-	a = Norm[ triangle[[1]] - triangle[[2]] ];
-	b = Norm[ triangle[[1]] - triangle[[3]] ];
-	c = Norm[ triangle[[2]] - triangle[[3]] ];
-	s = (a + b + c)/2;
-	Sqrt[s * (s - a) * (s - b) * (s - c)]
-];
-
-triangleContainsPoint[triangle_, point_] := Abs[(
-	triangleArea[ { triangle[[1]], triangle[[2]], point } ]
-	+ triangleArea[ { triangle[[1]], triangle[[3]], point } ]
-	+ triangleArea[ { triangle[[2]], triangle[[3]], point } ]
-	- triangleArea[ triangle ] )] < epsilon;
+(* complexPerturbation = {0, 1., -1, 0}; *)
+complexPerturbation = {0, 0, 0, 0};
 
 For[cid = 1, cid <= Length[cells], cid++,
+	If[Mod[cid, 1000] == 0, Print["Processing cell " <> IntegerString[cid]]];
 	cell = cells[[cid]];
 	anyFaceCrossingTarget = False;
 	For[fid = 1, fid <= Length[cell], fid++,
-		face = Map[# + complexPerturbation &, cell[[fid]]];
-		complexFace = Map[ {#[[1]] + I #[[2]], #[[3]] + I #[[4]]}&, face];
-		slopes = Map[ #[[1]]/#[[2]] &, complexFace ];
+		face = Map[# + complexPerturbation &, cell[[fid]]]//N;
+		matrix22 = {
+			{(face[[2]] - face[[1]]).slopeVector1, (face[[4]] - face[[1]]).slopeVector1},
+			{(face[[2]] - face[[1]]).slopeVector2, (face[[4]] - face[[1]]).slopeVector2}
+		};
+		offsets = -{
+			{face[[1]].slopeVector1},
+			{face[[1]].slopeVector2}
+		};
 
-		If[triangleContainsPoint[ slopes[[{1,2,3}]], N[targetComplexSlope] ] || triangleContainsPoint[ slopes[[{3, 4, 1}]], N[targetComplexSlope] ],
+		If[Abs[Det[matrix22]] < epsilon, Print["skip"]; Continue[]];
+
+		lambdas = Inverse[matrix22].offsets;
+		lambdas = Transpose[lambdas][[1]];
+		rhombusIntersects = lambdas[[1]] > epsilon && lambdas[[1]] < 1 - epsilon && lambdas[[2]] > epsilon && lambdas[[2]] < 1 - epsilon;
+
+		If[rhombusIntersects,
 			(* Print["face " <> IntegerString[fid] <> " crossing cell " <> IntegerString[cid]]; *)
 			anyFaceCrossingTarget = True;
 			Break[];
