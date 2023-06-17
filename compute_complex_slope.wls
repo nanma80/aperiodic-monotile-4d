@@ -4,6 +4,21 @@
 rho = exp*(2 pi i/6) (60 deg)
 rho^3 = -1
 
+spectre tiling from May paper:
+a + b + c + d == 0
+d = c * rho
+
+b = -a - c * (1+rho)
+-b = a + c * (1+rho)
+
+-a' = d rho^2 + a + b rho^4
+-c' = b + c rho^5 + d rho^5
+
+a' = a (rho^4-1) + c * (rho^4+rho^5 - rho^3)
+c' = a + c (rho - rho^5) 
+
+hat tiling from March paper:
+
 a + b + c + d == 0
 d = c * rho
 
@@ -15,20 +30,27 @@ c' = d + c + b rho = c (rho + 1) - a rho - c rho* (1+rho) = - a rho + c (1 - rho
 
 *)
 
-countMatrix = {{6, 5}, {1,1}};
+shape = "spectre";
+(* shape = "hat"; *)
+Print["shape: " <> shape];
+
+countMatrix = If[ shape == "spectre", {{7,6}, {1,1}}, {{6, 5}, {1,1}}];
 Print[Simplify[Eigenvalues[countMatrix]]];
 Print[Simplify[Eigenvalues[countMatrix]]//N];
-Print[N[{GoldenRatio^4, GoldenRatio^(-4)}]];
+Print[N[If[ shape == "spectre", {4 + Sqrt[15], 4 - Sqrt[15]}, {GoldenRatio^4, GoldenRatio^(-4)}]]];
 
 rho = Exp[2 Pi I/6]; (* 60 *)
 
-Q = {{ 1 + rho, rho + rho^2 - 1}, {- rho, 1 - rho^2}};
-P = Q;
+Q = If[ shape == "spectre",
+	{{(rho^4-1), (rho^4+rho^5 - rho^3)}, {1, (rho - rho^5)}},
+	{{ 1 + rho, rho + rho^2 - 1}, {- rho, 1 - rho^2}}
+];
+P = If[ shape == "spectre", Conjugate[Q].Q, Q ];
 evals = Simplify[Eigenvalues[P]];
 evecs = Simplify[Eigenvectors[P]];
 
 Print[evals//N];
-Print[N[{GoldenRatio^2, GoldenRatio^(-2)}]];
+Print[N[If[ shape == "spectre", {4 + Sqrt[15], 4 - Sqrt[15]}, {GoldenRatio^2, GoldenRatio^(-2)}]]];
 
 directions = {};
 For[clock = 1, clock <= 12, clock++,
@@ -53,8 +75,6 @@ For[vid = 2, vid <= 14, vid++,
 	AppendTo[polygon4d, newPoint];
 ];
 
-(* Print[polygon4d]; *)
-
 a04d = polygon4d[[9]] - polygon4d[[3]];
 c04d = polygon4d[[1]] - polygon4d[[13]];
 
@@ -72,10 +92,15 @@ Print[slope];
 Print[N[slope]];
 
 (* 
+spectre tiling:
+( (5 Sqrt[3] - Sqrt[5]) + I * (3 - 3 * Sqrt[15]) ) /14
+0.45887043288175683 - 0.615639288473018*I
+
+hat tiling:
 (Sqrt[3] - Sqrt[5] I)/4
-0.433013 - 0.559017 I
+0.4330127018922193 - 0.5590169943749475*I
  *)
-targetSlope = (Sqrt[3] - Sqrt[5] I)/4;
+targetSlope = If[ shape == "spectre", ( (5 Sqrt[3] - Sqrt[5]) + I * (3 - 3 * Sqrt[15]) ) /14, (Sqrt[3] - Sqrt[5] I)/4];
 Print[N[targetSlope]];
 
 Print[FullSimplify[slope - targetSlope]];
