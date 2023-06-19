@@ -12,10 +12,10 @@ python -m SimpleHTTPServer 8000
 
 (* global config *)
 
-(* frameCount = 2; *)
+frameCount = 2;
 (* frameCount = 5; *)
 (* frameCount = 10; *)
-frameCount = 100;
+(* frameCount = 100; *)
 (* frameCount = 60; *)
 
 (* topView = False; *)
@@ -38,15 +38,18 @@ meshMethod = "design1";
 rotationDirection = "";
 (* rotationDirection = "3rdDim"; *)
 
+(* projectionDirection = ""; *)
+projectionDirection = "asymptoticPlane";
+
 exportToPov = True;
 dataFolder = "data";
 imageFolder = "output";
 imageSize = 720/3 * {4, 3};
 
-range = If[singleTile, 3, If[shape == "spectre", 10, 8]]; (* change to 10 *)
+range = If[singleTile, 3, If[shape == "spectre_4d", 10, 8]]; (* change to 10 *)
 thickness = 0.05;
 
-shapeWithParams = shape <> If[topView, "", "_sideView"] <> If[fullRotation, "", "_quarterTurn"] <> If[singleTile, "_singleTile", ""] <> If[meshMethod == "", "", "_" <> meshMethod] <> If[rotationDirection == "", "", "_" <> rotationDirection] <> "_" <> IntegerString[frameCount];
+shapeWithParams = shape <> If[topView, "", "_sideView"] <> If[fullRotation, "", "_quarterTurn"] <> If[singleTile, "_singleTile", ""] <> If[meshMethod == "", "", "_" <> meshMethod] <> If[rotationDirection == "", "", "_" <> rotationDirection] <> If[projectionDirection == "", "", "_" <> projectionDirection] <> "_" <> IntegerString[frameCount];
 
 rangeFactor = 3.0;
 originalProjectionMatrixH4 = {
@@ -414,6 +417,21 @@ projection44[t_] := {
 	{0, -Sin[t], 0, Cos[t]}
 };
 
+targetSlope = If[ shape == "spectre_4d", ( (5 Sqrt[3] - Sqrt[5]) + I * (3 - 3 * Sqrt[15]) ) /14, (Sqrt[3] - Sqrt[5] I)/4];
+
+(* because most tiles went through flipDimensions *)
+targetSlope = 1/targetSlope;
+sr = Re[targetSlope];
+si = Im[targetSlope];
+
+If[projectionDirection == "asymptoticPlane",
+	projection44[t_] := {
+		{1, 0, -sr, si},
+		{0, 1, -si, -sr},
+		{sr, si, 1, 0},
+		{-si, sr, 0, 1}
+	}/Sqrt[1 + sr^2 + si^2];
+];
 
 (* projection43[t_] := projection44[t][[{1, 2, 3}]]; *)
 projection43[t_, s_] := {
