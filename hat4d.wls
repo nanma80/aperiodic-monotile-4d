@@ -13,9 +13,9 @@ python -m SimpleHTTPServer 8000
 (* global config *)
 
 (* frameCount = 2; *)
-(* frameCount = 5; *)
+frameCount = 5;
 (* frameCount = 10; *)
-frameCount = 100;
+(* frameCount = 100; *)
 (* frameCount = 60; *)
 
 (* topView = False; *)
@@ -453,12 +453,12 @@ If[projectionDirection == "orthogonalToAsymptoticPlane",
 ];
 
 If[projectionDirection == "strip",
-	projection44[t_] := RotateLeft[IdentityMatrix[4]].{
+	projection44[t_] := Map[{-#[[4]], #[[1]], #[[2]], #[[3]]}&, {
 		{Cos[t], 0, Sin[t], 0},
 		{0, Cos[t], 0, Sin[t]},
 		{-Sin[t], 0, Cos[t], 0},
 		{0, -Sin[t], 0, Cos[t]}
-	};
+	}];
 ];
 
 (* projection43[t_] := projection44[t][[{1, 2, 3}]]; *)
