@@ -27,8 +27,8 @@ singleTile = False;
 (* fullRotation = False; *)
 fullRotation = True;
 
-shape = "spectre_4d";
-(* shape = "hat_4d"; *)
+(* shape = "spectre_4d"; *)
+shape = "hat_4d";
 
 (* meshMethod = ""; *)
 (* meshMethod = "design1"; *)
