@@ -12,8 +12,8 @@ python -m SimpleHTTPServer 8000
 
 (* global config *)
 
-(* frameCount = 2; *)
-frameCount = 5;
+frameCount = 2;
+(* frameCount = 5; *)
 (* frameCount = 10; *)
 (* frameCount = 100; *)
 (* frameCount = 60; *)
@@ -27,8 +27,8 @@ singleTile = False;
 (* fullRotation = False; *)
 fullRotation = True;
 
-(* shape = "spectre_4d"; *)
-shape = "hat_4d";
+shape = "spectre_4d";
+(* shape = "hat_4d"; *)
 
 (* meshMethod = ""; *)
 (* meshMethod = "design1"; *)
@@ -40,8 +40,8 @@ rotationDirection = "";
 
 (* projectionDirection = ""; *)
 (* projectionDirection = "asymptoticPlane"; *)
-(* projectionDirection = "orthogonalToAsymptoticPlane"; *)
-projectionDirection = "strip";
+projectionDirection = "orthogonalToAsymptoticPlane";
+(* projectionDirection = "strip"; *)
 
 exportToPov = True;
 dataFolder = "data";
@@ -444,11 +444,17 @@ If[projectionDirection == "asymptoticPlane",
 ];
 
 If[projectionDirection == "orthogonalToAsymptoticPlane",
-	projection44[t_] := {
+	(* projection44[t_] := {
 		{sr, si, 1, 0},
 		{-si, sr, 0, 1},
 		{1, 0, -sr, si},
 		{0, 1, -si, -sr}
+	}/Sqrt[1 + sr^2 + si^2]; *)
+	projection44[t_] := {
+		{sr, -si, -1, 0},
+		{si, sr, 0, -1},
+		{-1, 0, -sr, -si},
+		{0, -1, si, -sr}
 	}/Sqrt[1 + sr^2 + si^2];
 ];
 
