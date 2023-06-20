@@ -12,17 +12,17 @@ python -m SimpleHTTPServer 8000
 
 (* global config *)
 
-frameCount = 2;
+(* frameCount = 2; *)
 (* frameCount = 5; *)
-(* frameCount = 10; *)
+frameCount = 10;
 (* frameCount = 100; *)
 (* frameCount = 60; *)
 
 (* topView = False; *)
 topView = True;
 
-(* singleTile = False; *)
-singleTile = True;
+singleTile = False;
+(* singleTile = True; *)
 
 (* fullRotation = False; *)
 fullRotation = True;
@@ -452,15 +452,13 @@ If[projectionDirection == "orthogonalToAsymptoticPlane",
 	}/Sqrt[1 + sr^2 + si^2];
 ];
 
-dd = (2 + Sqrt[3]);
-
 If[projectionDirection == "strip",
-	projection44[t_] := flipDimensions.{
-		{1 - dd, 0, 1 + dd, 0},
-		{0, - 1 - dd, 0, 1 - dd},
-		{1 + dd, 0, -1+dd, 0},
-		{0, -1 + dd, 0, -1 - dd}
-	}/(Norm[{1 - dd, 1 + dd}]);
+	projection44[t_] := RotateLeft[IdentityMatrix[4]].{
+		{Cos[t], 0, Sin[t], 0},
+		{0, Cos[t], 0, Sin[t]},
+		{-Sin[t], 0, Cos[t], 0},
+		{0, -Sin[t], 0, Cos[t]}
+	};
 ];
 
 (* projection43[t_] := projection44[t][[{1, 2, 3}]]; *)
