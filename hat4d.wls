@@ -14,8 +14,8 @@ python -m SimpleHTTPServer 8000
 
 (* frameCount = 2; *)
 (* frameCount = 5; *)
-frameCount = 10;
-(* frameCount = 100; *)
+(* frameCount = 10; *)
+frameCount = 100;
 (* frameCount = 60; *)
 
 (* topView = False; *)
