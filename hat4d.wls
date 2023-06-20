@@ -21,25 +21,27 @@ frameCount = 2;
 (* topView = False; *)
 topView = True;
 
-singleTile = False;
-(* singleTile = True; *)
+(* singleTile = False; *)
+singleTile = True;
 
 (* fullRotation = False; *)
 fullRotation = True;
 
-(* shape = "spectre_4d"; *)
-shape = "hat_4d";
+shape = "spectre_4d";
+(* shape = "hat_4d"; *)
 
 (* meshMethod = ""; *)
-meshMethod = "design1";
+(* meshMethod = "design1"; *)
 (* meshMethod = "design2"; *)
-(* meshMethod = "noFaces"; *)
+meshMethod = "noFaces";
 
 rotationDirection = "";
 (* rotationDirection = "3rdDim"; *)
 
 (* projectionDirection = ""; *)
-projectionDirection = "asymptoticPlane";
+(* projectionDirection = "asymptoticPlane"; *)
+(* projectionDirection = "orthogonalToAsymptoticPlane"; *)
+projectionDirection = "strip";
 
 exportToPov = True;
 dataFolder = "data";
@@ -417,6 +419,14 @@ projection44[t_] := {
 	{0, -Sin[t], 0, Cos[t]}
 };
 
+flipDimensions = {
+	{0, 0, 1, 0},
+	{0, 0, 0, 1},
+	{1, 0, 0, 0},
+	{0, 1, 0, 0}
+};
+mirror4D = DiagonalMatrix[{1,-1,1,-1}];
+
 targetSlope = If[ shape == "spectre_4d", ( (5 Sqrt[3] - Sqrt[5]) + I * (3 - 3 * Sqrt[15]) ) /14, (Sqrt[3] - Sqrt[5] I)/4];
 
 (* because most tiles went through flipDimensions *)
@@ -433,20 +443,32 @@ If[projectionDirection == "asymptoticPlane",
 	}/Sqrt[1 + sr^2 + si^2];
 ];
 
+If[projectionDirection == "orthogonalToAsymptoticPlane",
+	projection44[t_] := {
+		{sr, si, 1, 0},
+		{-si, sr, 0, 1},
+		{1, 0, -sr, si},
+		{0, 1, -si, -sr}
+	}/Sqrt[1 + sr^2 + si^2];
+];
+
+dd = (2 + Sqrt[3]);
+
+If[projectionDirection == "strip",
+	projection44[t_] := flipDimensions.{
+		{1 - dd, 0, 1 + dd, 0},
+		{0, - 1 - dd, 0, 1 - dd},
+		{1 + dd, 0, -1+dd, 0},
+		{0, -1 + dd, 0, -1 - dd}
+	}/(Norm[{1 - dd, 1 + dd}]);
+];
+
 (* projection43[t_] := projection44[t][[{1, 2, 3}]]; *)
 projection43[t_, s_] := {
 	projection44[t][[1]],
 	projection44[t][[2]],
 	(projection44[t][[3]] Cos[s] + projection44[t][[4]] Sin[s])
 };
-
-flipDimensions = {
-	{0, 0, 1, 0},
-	{0, 0, 0, 1},
-	{1, 0, 0, 0},
-	{0, 1, 0, 0}
-};
-mirror4D = DiagonalMatrix[{1,-1,1,-1}];
 
 offset[polygon_, move_] := Map[# + move &, polygon];
 rotate[angle_] := ArrayFlatten[{
