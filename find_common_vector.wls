@@ -11,10 +11,20 @@ sr = Re[targetSlope];
 si = Im[targetSlope];
 
 (* my convention, need to invert *)
-(* asym = {{1, 0, -sr, si},{0, 1, -si, -sr}}; *)
+(* asym1 = {{1, 0, -sr, si},
+		{0, 1, -si, -sr}};
+ *)
+(* Arnaud's convention for the subspace *)
+asymSubspace = {
+	{-sr, si, 1, 0}, 
+	{-si, -sr, 0, 1}
+};
 
-(* Arnaud's convention *)
-asym = {{-sr, si, 1, 0}, {-si, -sr, 0, 1}};
+(* projection ot the asym subspace *)
+asym = {
+	{1, 0, sr, si},
+	{0, 1, -si, sr}
+};
 
 strip[t_] := Map[{-#[[4]], #[[1]], #[[2]], #[[3]]}&, {
 		{Cos[t], 0, Sin[t], 0},
