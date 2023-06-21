@@ -39,8 +39,8 @@ rotationDirection = "";
 (* rotationDirection = "3rdDim"; *)
 
 (* projectionDirection = ""; *)
-(* projectionDirection = "asymptoticPlane"; *)
-projectionDirection = "orthogonalToAsymptoticPlane";
+projectionDirection = "asymptoticPlane";
+(* projectionDirection = "orthogonalToAsymptoticPlane"; *)
 (* projectionDirection = "strip"; *)
 
 exportToPov = True;
@@ -436,25 +436,19 @@ si = Im[targetSlope];
 
 If[projectionDirection == "asymptoticPlane",
 	projection44[t_] := {
-		{1, 0, -sr, si},
-		{0, 1, -si, -sr},
-		{sr, si, 1, 0},
-		{-si, sr, 0, 1}
+		{1, 0, sr, si},
+		{0, 1, -si, sr},
+		{-sr, si, 1, 0}, 
+		{-si, -sr, 0, 1}
 	}/Sqrt[1 + sr^2 + si^2];
 ];
 
 If[projectionDirection == "orthogonalToAsymptoticPlane",
-	(* projection44[t_] := {
-		{sr, si, 1, 0},
-		{-si, sr, 0, 1},
-		{1, 0, -sr, si},
-		{0, 1, -si, -sr}
-	}/Sqrt[1 + sr^2 + si^2]; *)
 	projection44[t_] := {
-		{sr, -si, -1, 0},
-		{si, sr, 0, -1},
-		{-1, 0, -sr, -si},
-		{0, -1, si, -sr}
+		{-sr, si, 1, 0}, 
+		{-si, -sr, 0, 1},
+		{1, 0, sr, si},
+		{0, 1, -si, sr}
 	}/Sqrt[1 + sr^2 + si^2];
 ];
 
