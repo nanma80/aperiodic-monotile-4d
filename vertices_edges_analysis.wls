@@ -646,11 +646,9 @@ edges12 = Union[ Map[#[[{1,2}]]&, uniqueEdges], SameTest -> ApproxSamePoint];
 edges34 = Union[ Map[#[[{3,4}]]&, uniqueEdges], SameTest -> ApproxSamePoint];
 
 Print[Length/@{edges12, edges34}];
-Print[edges34.triangleGridMatrix];
-Print[edges12.RotateLeft[triangleGridMatrix]];
+Print[edges12];
+Print[edges34];
 
-
-Exit[];
 
 (* For[id = 0, id <= 6 * 4, id++,
 	exportImage[polygons, id/6*Pi/2, id, "test"];
