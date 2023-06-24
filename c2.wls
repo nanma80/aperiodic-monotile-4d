@@ -38,18 +38,25 @@ meshMethod = "design1";
 rotationDirection = "";
 (* rotationDirection = "3rdDim"; *)
 
+(* default is based on cell *)
+(* selectionMethod = ""; *)
+selectionMethod = "face";
+
+intersectionIncludeBoundary = False;
+(* intersectionIncludeBoundary = True; *)
+
 exportToPov = True;
 dataFolder = "data";
 imageFolder = "output";
 imageSize = 720/3 * {4, 3};
 
-truncateThreshold = 4;
+truncateThreshold = 2;
 
 range = 10;
 (* If[singleTile, 3, If[shape == "spectre", 10, 8]]; (* change to 10 *) *)
 thickness = 0.02;
 
-shapeWithParams = shape <> If[topView, "", "_sideView"] <> If[fullRotation, "", "_quarterTurn"] <> If[singleTile, "_singleTile", ""] <> If[meshMethod == "", "", "_" <> meshMethod] <> If[rotationDirection == "", "", "_" <> rotationDirection] <> "_" <> IntegerString[frameCount];
+shapeWithParams = shape <> If[topView, "", "_sideView"] <> If[fullRotation, "", "_quarterTurn"] <> If[singleTile, "_singleTile", ""] <> If[meshMethod == "", "", "_" <> meshMethod] <> If[rotationDirection == "", "", "_" <> rotationDirection] <> If[selectionMethod == "", "", "_" <> selectionMethod] <> "_" <> IntegerString[frameCount];
 
 rangeFactor = 3.0;
 originalProjectionMatrixH4 = {
@@ -406,23 +413,55 @@ Print[Length[cells]];
 cells = Apply[Join, Map[move[cells, {0, 0, 2 Sqrt[3] #[[2]], 2 Sqrt[3] #[[1]] } ]&, triangleGrid]];
 Print["Generated cells: " <> IntegerString[Length[cells]]];
 
+cells = move[cells, {0.4324, 0.168, 0.22, 0.347}];
+
+If[selectionMethod == "face", 
+	faces = N[Flatten[cells, 1]];
+	Print[faces//Length];
+	(* uniqueFaces = Union[faces, SameTest -> sameCenter]; *)
+	uniqueFaces = faces;
+	Print[uniqueFaces//Length];
+	cells = Map[{#}&, uniqueFaces];
+];
+
+Print["After applying selectionMethod " <> selectionMethod <> " the count of selection unit is " <> IntegerString[Length[cells]]];
+
 cellCenters = Map[getCellCenter[#]&, cells];
 (* cellCenters = Map[getCellCenter[#] - getCellCenter[cell1]&, cells]; *)
 
 (* for spectre tiling *)
 (* 0.45887043288175683 - 0.615639288473018*I *)
-targetComplexSlope = ( (5 Sqrt[3] - Sqrt[5]) + I * (3 - 3 * Sqrt[15]) ) /14;
+(* targetComplexSlope = ( (5 Sqrt[3] - Sqrt[5]) + I * (3 - 3 * Sqrt[15]) ) /14;
 targetComplexSlope = 1/targetComplexSlope;
 slopeVector1 = {1, 0, - Re[targetComplexSlope], Im[targetComplexSlope]}//N;
 slopeVector2 = {0, 1, - Im[targetComplexSlope], -Re[targetComplexSlope]}//N;
+ *)
+targetSlope = If[ shape == "spectre_4d", ( (5 Sqrt[3] - Sqrt[5]) + I * (3 - 3 * Sqrt[15]) ) /14, (Sqrt[3] - Sqrt[5] I)/4];
+targetSlope = 1/targetSlope;
+sr = Re[targetSlope];
+si = Im[targetSlope];
+slopeVector1 = {sr, -si, -1, 0}/Norm[{1, sr, si}]//N;
+slopeVector2 = {si, sr, 0, -1}/Norm[{1, sr, si}]//N;
+(* slopeVector1 = {1, 0, - sr, si}//N; *)
+(* slopeVector2 = {0, 1, -si, -sr}//N; *)
+
+
+(* z + wi = (sr + i si)(x+iy) = sr x - si y + i(si x + sr y)
+sr x - si y - z = 0
+si x + sr y - w = 0
+[sr, -si, -1, 0]
+[si, sr, 0, -1 ]
+ *)
 
 cellsToKeep = {};
 (* complexPerturbation = Table[0.1, {k, 4}]; *)
 (* complexPerturbation = {0, 1., -1, 0}; *)
 complexPerturbation = {0, 0, 0, 0};
 
+epsilonFactor = If[intersectionIncludeBoundary, -1, 1];
+
 For[cid = 1, cid <= Length[cells], cid++,
-	If[Mod[cid, 1000] == 0, Print["Processing cell " <> IntegerString[cid]]];
+	If[Mod[cid, 10000] == 0, Print["Processing cell " <> IntegerString[cid]]];
 	cell = cells[[cid]];
 	anyFaceCrossingTarget = False;
 	For[fid = 1, fid <= Length[cell], fid++,
@@ -440,7 +479,7 @@ For[cid = 1, cid <= Length[cells], cid++,
 
 		lambdas = Inverse[matrix22].offsets;
 		lambdas = Transpose[lambdas][[1]];
-		rhombusIntersects = lambdas[[1]] > epsilon && lambdas[[1]] < 1 - epsilon && lambdas[[2]] > epsilon && lambdas[[2]] < 1 - epsilon;
+		rhombusIntersects = lambdas[[1]] > epsilonFactor epsilon && lambdas[[1]] < 1 - epsilonFactor epsilon && lambdas[[2]] > epsilonFactor epsilon && lambdas[[2]] < 1 - epsilonFactor epsilon;
 
 		If[rhombusIntersects,
 			(* Print["face " <> IntegerString[fid] <> " crossing cell " <> IntegerString[cid]]; *)
@@ -454,13 +493,11 @@ For[cid = 1, cid <= Length[cells], cid++,
 ];
 
 Print["cells to keep: " <> IntegerString[Length[cellsToKeep]]];
-(* Exit[]; *)
-
 cells = cells[[cellsToKeep]];
 
 exportImage[cells, Pi/4, Pi/4, 45, "test"];
-exportImage[cells, Pi/6, Pi/4, 30, "test"];
-exportImage[cells, Pi/3, Pi/4, 60, "test"];
+(* exportImage[cells, Pi/6, Pi/4, 30, "test"]; *)
+(* exportImage[cells, Pi/3, Pi/4, 60, "test"]; *)
 
 
 Exit[];
