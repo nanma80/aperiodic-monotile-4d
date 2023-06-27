@@ -31,16 +31,17 @@ shape = "spectre_4d";
 (* shape = "hat_4d"; *)
 
 (* meshMethod = ""; *)
-meshMethod = "design1";
+(* meshMethod = "design1"; *)
 (* meshMethod = "design2"; *)
-(* meshMethod = "noFaces"; *)
+meshMethod = "noFaces";
 
 rotationDirection = "";
 (* rotationDirection = "3rdDim"; *)
 
 (* default is based on cell *)
 (* selectionMethod = ""; *)
-selectionMethod = "face";
+(* selectionMethod = "face"; *)
+selectionMethod = "cell";
 
 intersectionIncludeBoundary = False;
 (* intersectionIncludeBoundary = True; *)
@@ -50,7 +51,7 @@ dataFolder = "data";
 imageFolder = "output";
 imageSize = 720/3 * {4, 3};
 
-truncateThreshold = 2;
+truncateThreshold = 1;
 
 range = 10;
 (* If[singleTile, 3, If[shape == "spectre", 10, 8]]; (* change to 10 *) *)
@@ -178,6 +179,7 @@ exportImage[cells_, theta_, sigma_, serialNumber_, frameFolder_] := Module[
 
 	(* facesByPolygons = Table[Map[projectedPolygons[[k]][[#]]&, triangleIds ], {k, 1, Length[projectedPolygons]}]; *)
 
+	If[meshMethod == "noFaces", faces3d = {}];
 	edgeColor = If[meshMethod == "noFaces", Blue, White];
 	faceColor = Blue;
 
@@ -389,6 +391,18 @@ cellsIds = {
 
 cell1 = Map[If[# == {}, {0,0,0,0},Total[directions[[#]]] ]& , cellsIds, {2}];
 
+intersectingFaces[fid_, vectorId_] := Total[Map[Length[Intersection[#, {vectorId}]]&, cellsIds[[fid]] ]];
+
+faceIdsInThreeFaces = {};
+AppendTo[faceIdsInThreeFaces, Select[Range[Length[cellsIds]], intersectingFaces[#, 1] == 0 &] ];
+AppendTo[faceIdsInThreeFaces, Select[Range[Length[cellsIds]], intersectingFaces[#, 1] == 4 &] ];
+AppendTo[faceIdsInThreeFaces, Select[Range[Length[cellsIds]], intersectingFaces[#, 4] == 0 &] ];
+AppendTo[faceIdsInThreeFaces, Select[Range[Length[cellsIds]], intersectingFaces[#, 4] == 4 &] ];
+AppendTo[faceIdsInThreeFaces, Select[Range[Length[cellsIds]], intersectingFaces[#, 5] == 0 &] ];
+AppendTo[faceIdsInThreeFaces, Select[Range[Length[cellsIds]], intersectingFaces[#, 5] == 4 &] ];
+AppendTo[faceIdsInThreeFaces, Select[Range[Length[cellsIds]], intersectingFaces[#, 8] == 0 &] ];
+AppendTo[faceIdsInThreeFaces, Select[Range[Length[cellsIds]], intersectingFaces[#, 8] == 4 &] ];
+
 rotate[angle1_, angle2_] := ArrayFlatten[{
 	{RotationMatrix[angle1/180*Pi], 0}, 
 	{0, RotationMatrix[angle2/180*Pi]}}
@@ -413,7 +427,7 @@ Print[Length[cells]];
 cells = Apply[Join, Map[move[cells, {0, 0, 2 Sqrt[3] #[[2]], 2 Sqrt[3] #[[1]] } ]&, triangleGrid]];
 Print["Generated cells: " <> IntegerString[Length[cells]]];
 
-cells = move[cells, {0.4324, 0.168, 0.22, 0.347}];
+cells = move[cells, {0.4324, 0.168, 0.22, 0.347}/10];
 
 If[selectionMethod == "face", 
 	faces = N[Flatten[cells, 1]];
@@ -422,6 +436,25 @@ If[selectionMethod == "face",
 	uniqueFaces = faces;
 	Print[uniqueFaces//Length];
 	cells = Map[{#}&, uniqueFaces];
+];
+
+If[selectionMethod == "cell",
+	outputCells = {};
+	For[cid = 1, cid <= Length[cells], cid++,
+		cell = cells[[cid]];
+		threeFaces = {};
+		For[fid = 1, fid <= Length[faceIdsInThreeFaces], fid++,
+			AppendTo[outputCells, cell[[ faceIdsInThreeFaces[[fid]] ]] ];
+		];
+	];
+
+	Print[Length[outputCells]];
+	cells = outputCells;
+
+	(* uniqueOutputCells = Union[outputCells, SameTest -> sameCellCenter]; *)
+	(* Print[Length[uniqueOutputCells]]; *)
+	(* cells = uniqueOutputCells; *)
+
 ];
 
 Print["After applying selectionMethod " <> selectionMethod <> " the count of selection unit is " <> IntegerString[Length[cells]]];
@@ -461,7 +494,7 @@ complexPerturbation = {0, 0, 0, 0};
 epsilonFactor = If[intersectionIncludeBoundary, -1, 1];
 
 For[cid = 1, cid <= Length[cells], cid++,
-	If[Mod[cid, 10000] == 0, Print["Processing cell " <> IntegerString[cid]]];
+	If[Mod[cid, 1000] == 0, Print["Processing cell " <> IntegerString[cid]]];
 	cell = cells[[cid]];
 	anyFaceCrossingTarget = False;
 	For[fid = 1, fid <= Length[cell], fid++,
@@ -496,8 +529,8 @@ Print["cells to keep: " <> IntegerString[Length[cellsToKeep]]];
 cells = cells[[cellsToKeep]];
 
 exportImage[cells, Pi/4, Pi/4, 45, "test"];
-(* exportImage[cells, Pi/6, Pi/4, 30, "test"]; *)
-(* exportImage[cells, Pi/3, Pi/4, 60, "test"]; *)
+exportImage[cells, Pi/6, Pi/4, 30, "test"];
+exportImage[cells, Pi/3, Pi/4, 60, "test"];
 
 
 Exit[];
