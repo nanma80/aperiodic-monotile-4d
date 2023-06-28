@@ -21,27 +21,27 @@ frameCount = 100;
 (* topView = False; *)
 topView = True;
 
-(* singleTile = False; *)
-singleTile = True;
+singleTile = False;
+(* singleTile = True; *)
 
 (* fullRotation = False; *)
 fullRotation = True;
 
-shape = "spectre_4d";
-(* shape = "hat_4d"; *)
+(* shape = "chiral_tiling"; *)
+shape = "nonchiral_tiling";
 
-(* meshMethod = ""; *)
+meshMethod = "";
 (* meshMethod = "design1"; *)
 (* meshMethod = "design2"; *)
-meshMethod = "noFaces";
+(* meshMethod = "noFaces"; *)
 
 rotationDirection = "";
 (* rotationDirection = "3rdDim"; *)
 
 (* default is based on cell *)
-(* selectionMethod = ""; *)
-(* selectionMethod = "face"; *)
-selectionMethod = "cell";
+selectionMethod = "2face";
+(* selectionMethod = "3face"; *)
+(* selectionMethod = "4face"; *)
 
 intersectionIncludeBoundary = False;
 (* intersectionIncludeBoundary = True; *)
@@ -51,13 +51,13 @@ dataFolder = "data";
 imageFolder = "output";
 imageSize = 720/3 * {4, 3};
 
-truncateThreshold = 1;
+truncateThreshold = 2;
 
 range = 10;
 (* If[singleTile, 3, If[shape == "spectre", 10, 8]]; (* change to 10 *) *)
 thickness = 0.02;
 
-shapeWithParams = shape <> If[topView, "", "_sideView"] <> If[fullRotation, "", "_quarterTurn"] <> If[singleTile, "_singleTile", ""] <> If[meshMethod == "", "", "_" <> meshMethod] <> If[rotationDirection == "", "", "_" <> rotationDirection] <> If[selectionMethod == "", "", "_" <> selectionMethod] <> "_" <> IntegerString[frameCount];
+shapeWithParams = shape <> If[topView, "", "_sideView"] <> If[fullRotation, "", "_quarterTurn"] <> If[singleTile, "_singleTile", ""] <> If[meshMethod == "", "", "_" <> meshMethod] <> If[rotationDirection == "", "", "_" <> rotationDirection] <> If[selectionMethod == "", "", "_" <> selectionMethod] <> "_" <> IntegerString[truncateThreshold];
 
 rangeFactor = 3.0;
 originalProjectionMatrixH4 = {
@@ -162,7 +162,7 @@ exportImage[cells_, theta_, sigma_, serialNumber_, frameFolder_] := Module[
 	outputFolder = FileNameJoin[{imageFolder, frameFolder}];
 	If[!DirectoryQ[outputFolder], CreateDirectory[outputFolder]];
 
-	outputFileName = "animation_" <> shape <> "_" <> IntegerString[serialNumber, 10, 4] <> ".png";
+	outputFileName = shapeWithParams <> "_" <> IntegerString[serialNumber, 10, 3] <> ".png";
 	outputFileName = FileNameJoin[{outputFolder, outputFileName}];
 
 	cropCommand = "mogrify -crop " <> IntegerString[imageSize[[2]]] <> "x" <> IntegerString[imageSize[[2]]] <> "+" <> IntegerString[(imageSize[[1]]-imageSize[[2]])/2] <> "+0 " <> outputFileName;
@@ -429,7 +429,7 @@ Print["Generated cells: " <> IntegerString[Length[cells]]];
 
 cells = move[cells, {0.4324, 0.168, 0.22, 0.347}/10];
 
-If[selectionMethod == "face", 
+If[selectionMethod == "2face", 
 	faces = N[Flatten[cells, 1]];
 	Print[faces//Length];
 	(* uniqueFaces = Union[faces, SameTest -> sameCenter]; *)
@@ -438,7 +438,7 @@ If[selectionMethod == "face",
 	cells = Map[{#}&, uniqueFaces];
 ];
 
-If[selectionMethod == "cell",
+If[selectionMethod == "3face",
 	outputCells = {};
 	For[cid = 1, cid <= Length[cells], cid++,
 		cell = cells[[cid]];
@@ -469,8 +469,8 @@ targetComplexSlope = 1/targetComplexSlope;
 slopeVector1 = {1, 0, - Re[targetComplexSlope], Im[targetComplexSlope]}//N;
 slopeVector2 = {0, 1, - Im[targetComplexSlope], -Re[targetComplexSlope]}//N;
  *)
-targetSlope = If[ shape == "spectre_4d", ( (5 Sqrt[3] - Sqrt[5]) + I * (3 - 3 * Sqrt[15]) ) /14, (Sqrt[3] - Sqrt[5] I)/4];
-targetSlope = 1/targetSlope;
+targetSlope = If[ shape == "chiral_tiling", ( (5 Sqrt[3] - Sqrt[5]) + I * (3 - 3 * Sqrt[15]) ) /14, (Sqrt[3] - Sqrt[5] I)/4];
+(* targetSlope = 1/targetSlope; *)
 sr = Re[targetSlope];
 si = Im[targetSlope];
 slopeVector1 = {sr, -si, -1, 0}/Norm[{1, sr, si}]//N;
@@ -528,10 +528,8 @@ For[cid = 1, cid <= Length[cells], cid++,
 Print["cells to keep: " <> IntegerString[Length[cellsToKeep]]];
 cells = cells[[cellsToKeep]];
 
-exportImage[cells, Pi/4, Pi/4, 45, "test"];
-exportImage[cells, Pi/6, Pi/4, 30, "test"];
-exportImage[cells, Pi/3, Pi/4, 60, "test"];
+exportImage[cells, Pi/4, Pi/4, 45, "intersection_selection"];
+exportImage[cells, Pi/6, Pi/4, 30, "intersection_selection"];
+exportImage[cells, Pi/3, Pi/4, 60, "intersection_selection"];
 
-
-Exit[];
 
