@@ -39,9 +39,9 @@ rotationDirection = "";
 (* rotationDirection = "3rdDim"; *)
 
 (* projectionDirection = ""; *)
-projectionDirection = "asymptoticPlane";
+(* projectionDirection = "asymptoticPlane"; *)
 (* projectionDirection = "orthogonalToAsymptoticPlane"; *)
-(* projectionDirection = "strip"; *)
+projectionDirection = "strip";
 
 exportToPov = True;
 dataFolder = "data";
@@ -453,12 +453,20 @@ If[projectionDirection == "orthogonalToAsymptoticPlane",
 ];
 
 If[projectionDirection == "strip",
+	(* different ways to project to a strip with octagons *)
 	projection44[t_] := Map[{-#[[4]], #[[1]], #[[2]], #[[3]]}&, {
 		{Cos[t], 0, Sin[t], 0},
 		{0, Cos[t], 0, Sin[t]},
 		{-Sin[t], 0, Cos[t], 0},
 		{0, -Sin[t], 0, Cos[t]}
 	}];
+
+	projection44[t_] := {
+		{Cos[t], 0, Sin[t], 0},
+		{0, Cos[t], 0, Sin[t]},
+		{-Sin[t], 0, Cos[t], 0},
+		{0, -Sin[t], 0, Cos[t]}
+	}[[{1,4,3,2}]]; 
 ];
 
 (* projection43[t_] := projection44[t][[{1, 2, 3}]]; *)
