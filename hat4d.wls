@@ -12,10 +12,10 @@ python -m SimpleHTTPServer 8000
 
 (* global config *)
 
-frameCount = 2;
+(* frameCount = 2; *)
 (* frameCount = 5; *)
 (* frameCount = 10; *)
-(* frameCount = 100; *)
+frameCount = 100;
 (* frameCount = 60; *)
 
 (* topView = False; *)
@@ -27,8 +27,8 @@ singleTile = False;
 (* fullRotation = False; *)
 fullRotation = True;
 
-shape = "spectre_4d";
-(* shape = "hat_4d"; *)
+(* shape = "spectre_4d"; *)
+shape = "hat_4d";
 
 (* meshMethod = ""; *)
 (* meshMethod = "design1"; *)
@@ -38,10 +38,10 @@ meshMethod = "noFaces";
 rotationDirection = "";
 (* rotationDirection = "3rdDim"; *)
 
-(* projectionDirection = ""; *)
+projectionDirection = "";
 (* projectionDirection = "asymptoticPlane"; *)
 (* projectionDirection = "orthogonalToAsymptoticPlane"; *)
-projectionDirection = "strip";
+(* projectionDirection = "strip"; *)
 
 exportToPov = True;
 dataFolder = "data";
@@ -334,7 +334,7 @@ exportAnimation[] := Module[
 
 	For[frameIndex = 1, frameIndex <= Length[angles], frameIndex++,
 		(* Continue[]; *)
-		(* If[frameIndex < 31, Continue[]]; *)
+		(* If[frameIndex < 400, Continue[]]; *)
 		(* If[Mod[frameIndex, 2] == 1 && frameIndex > 1, Continue[]]; *)
 		(* If[frameIndex != 2, Continue[]]; *)
 		angle = angles[[frameIndex]];
