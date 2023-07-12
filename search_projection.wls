@@ -27,8 +27,8 @@ singleTile = False;
 (* fullRotation = False; *)
 fullRotation = True;
 
-shape = "spectre_4d";
-(* shape = "hat_4d"; *)
+(* shape = "spectre_4d"; *)
+shape = "hat_4d";
 
 (* meshMethod = ""; *)
 (* meshMethod = "design1"; *)
@@ -608,7 +608,7 @@ getTiling[polygon4d_] := If[shape == "spectre_4d",
 	getHatTiling[polygon4d]
 ];
 
-polygons = getTiling[polygon4d];
+polygons = getTiling[polygon4d]//N;
 
 If[singleTile, polygons = polygons[[{1}]]];
 
@@ -641,7 +641,10 @@ Print[projectedPolygonAreas//N];
 
 (* Print[ Max[projectedPolygonAreas] - Min[projectedPolygonAreas] ]; *)
 
-areaGap[polygons_, projectionMatrix42_] := Apply[Max[#]-Min[#]&, {Map[Area[Polygon[#]]&, Map[ projectionMatrix42.#&, N[polygons], {2}]]}];
+(* areaGap[polygons_, projectionMatrix42_] := Apply[Max[#]-Min[#]&, {Map[Area[Polygon[#]]&, Map[ projectionMatrix42.#&, N[polygons], {2}]]}]; *)
+areas[polygons_, projectionMatrix42_] := Map[ Area[Polygon[(#.Transpose[projectionMatrix42])]]&, N[polygons]];
+
+areaGap[polygons_, projectionMatrix42_] := Apply[Max[#]-Min[#]&, { areas[polygons, projectionMatrix42] }];
 
 areaMax[polygons_, projectionMatrix42_] := Max[Map[Area[Polygon[#]]&, Map[ projectionMatrix42.#&, N[polygons], {2}]] ];
 
@@ -673,6 +676,7 @@ minimum = NMinimize[ { areaGap[ polygons, Orthogonalize[{{a,b,c,Sqrt[1-a^2-b^2-c
 	&& d^2+e^2+f^2 <= 1 
 	&& a <= 1 && b <= 1 && c <= 1 && d <= 1 && e <= 1 && f <= 1
 	&& a >= -1 && b >= -1 && c >= -1 && d >= -1 && e >= -1 && f >= -1
+	&& a >= 0.1 && b >= 0.1
 	 }, 
 	{a,b,c,d,e,f}
 	(* {{a, 1}, {b, 0}, {c, 0}, {d, 0}, {e, 1} , {f, 0}}  *)
@@ -703,10 +707,14 @@ minimum = NMinimize[ { areaGap[ polygons, Orthogonalize[{{a,b,c,Sqrt[1-a^2-b^2-c
 	{a,b,c,d,e,f}
 ];
  *)
-Print[minimum];
+
 (* minimum = {1.4511311441367525*^-7, {a -> 0.03852000026386012, b -> -0.13100204443688318, c -> -0.2794565842114031, d -> -0.06771246728376747, e -> -0.11857633802475258, f -> 0.4912433361888025}}; *)
 
 (* minimum = {3.484949173682139*^-7, {a -> -0.7870724015470925, b -> 0.07522086452901136, c -> 0.5080067430460257, d -> -0.47157742592171314, e -> 0.023630190304413903, f -> 0.23339469149847258}}; *)
+
+(* minimum = {1.260986342899173*^-6, {a -> 0.5405012878386299, b -> -0.48683326871328625, c -> 0.18404514760790477, d -> 0.22143595938603267, e -> -0.3645558603768601, f -> 0.37207780896596565}}; *)
+
+Print[minimum];
 
 If[Length[minimum] > 0,
 	projection42 = Orthogonalize[{{a,b,c,Sqrt[1-a^2-b^2-c^2]},{d,e,f,Sqrt[1-d^2-e^2-f^2] }}]/.minimum[[2]];
@@ -714,9 +722,15 @@ If[Length[minimum] > 0,
 	Print[Norm/@projection42];
 	Print[Dot[projection42[[1]], projection42[[2]]]];
 
+	Print[  {Map[Area[Polygon[#]]&, Map[ projection42.#&, N[polygons], {2}]]}  ];
+	Print[areas[polygons, projection42]];
+
+	(* Print[areaGap[ polygons, Orthogonalize[{{a,b,c,Sqrt[1-a^2-b^2-c^2]},{d,e,f,Sqrt[1-d^2-e^2-f^2] }}/.minimum[[2]] ] ] ]; *)
+	(* Print[polygons]; *)
+
 	Print[areaGap[polygons, projection42]];
 
-	Print[ Map[Area[Polygon[#]]&, Map[projection42.#&, N[polygons], {2}]] ];
+	(* Print[ Map[Area[Polygon[#]]&, Map[projection42.#&, N[polygons], {2}]] ]; *)
 	projection43 = Orthogonalize[Join[projection42, {{0, 1, 2, 3}}]];
 
 	exportImage[polygons, projection43, 1, "test"];
