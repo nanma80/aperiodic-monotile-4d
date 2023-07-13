@@ -608,7 +608,7 @@ getTiling[polygon4d_] := If[shape == "spectre_4d",
 	getHatTiling[polygon4d]
 ];
 
-polygons = getTiling[polygon4d]//N;
+polygons = getTiling[polygon4d];
 
 If[singleTile, polygons = polygons[[{1}]]];
 
@@ -616,8 +616,24 @@ If[singleTile, polygons = polygons[[{1}]]];
 vector12s = Map[(Transpose[{{1, 0}, {0, 1}, {1, 0}, {0, 1}}].(#[[2]] - #[[1]]))&, polygons];
 colors = Map[ Hue[ Mod[Arg[#[[1]] + I #[[2]]]/2/Pi , 1] ]&, vector12s];
 
-center = Mean[Map[Mean, polygons]];
-polygons = Map[offset[#, - center ]&, polygons];
+vector12s4d = Map[((#[[2]] - #[[1]]) + (#[[4]] - #[[3]])*7 )&, polygons];
+(* Print[vector12s4d]; *)
+
+(* Print[ Union[vector12s4d]//Length ]; *)
+
+groups = GroupBy[Range[Length[vector12s4d]], vector12s4d[[#]]& ];
+groupHeads = Map[First, Values[groups]];
+
+(* Print[Length[groupHeads]]; *)
+
+(* Exit[]; *)
+
+polygonsSubset = polygons[[groupHeads]]//N;
+
+(* polygonsSubset = polygons//N; *)
+
+(* center = Mean[Map[Mean, polygons]];
+polygons = Map[offset[#, - center ]&, polygons]; *)
 
 projection42 = {
 	{Cos[t], 0, Sin[t], 0},
@@ -636,8 +652,8 @@ Exit[];
 
 (* Print[Length[projectedPolygons]]; *)
 
-projectedPolygonAreas = Apply[Max[#]-Min[#]&, Map[Area[Polygon[#]]&, Map[projection42.#&, polygons, {2}]]];
-Print[projectedPolygonAreas//N];
+(* projectedPolygonAreas = Apply[Max[#]-Min[#]&, Map[Area[Polygon[#]]&, Map[projection42.#&, polygons, {2}]]]; *)
+(* Print[projectedPolygonAreas//N]; *)
 
 (* Print[ Max[projectedPolygonAreas] - Min[projectedPolygonAreas] ]; *)
 
@@ -650,13 +666,14 @@ areaMax[polygons_, projectionMatrix42_] := Max[Map[Area[Polygon[#]]&, Map[ proje
 
 areaMin[polygons_, projectionMatrix42_] := Min[Map[Area[Polygon[#]]&, Map[ projectionMatrix42.#&, N[polygons], {2}]] ];
 
-presetSolution = {a -> 1, b-> 0, c-> 0, d -> 0, e-> 1, f-> 0};
+(* presetSolution = {a -> 1, b-> 0, c-> 0, d -> 0, e-> 1, f-> 0};
 projection42 = Orthogonalize[{{a,b,c,Sqrt[1-a^2-b^2-c^2]},{d,e,f,Sqrt[1-d^2-e^2-f^2] }}]/.presetSolution;
 Print[projection42];
 Print[Norm/@projection42];
 Print[Dot[projection42[[1]], projection42[[2]]]];
 
 Print[areaGap[polygons, projection42]];
+ *)
 (* Exit[]; *)
 
 
@@ -671,15 +688,14 @@ Print[areaGap[polygons, projection42]];
 ];
  *)
 
-minimum = NMinimize[ { areaGap[ polygons, Orthogonalize[{{a,b,c,Sqrt[1-a^2-b^2-c^2]},{d,e,f,Sqrt[1-d^2-e^2-f^2] }}] ], 
+minimum = NMinimize[ { areaGap[ polygonsSubset, Orthogonalize[{{a,b,c,Sqrt[1-a^2-b^2-c^2]},{d,e,f,Sqrt[1-d^2-e^2-f^2] }}] ], 
 	a^2+b^2+c^2 <= 1 
 	&& d^2+e^2+f^2 <= 1 
 	&& a <= 1 && b <= 1 && c <= 1 && d <= 1 && e <= 1 && f <= 1
 	&& a >= -1 && b >= -1 && c >= -1 && d >= -1 && e >= -1 && f >= -1
-	&& a >= 0.1 && b >= 0.1
+	(* && a >= 0.1 && b >= 0.1 *)
 	 }, 
 	{a,b,c,d,e,f}
-	(* {{a, 1}, {b, 0}, {c, 0}, {d, 0}, {e, 1} , {f, 0}}  *)
 	(* , AccuracyGoal -> 5, PrecisionGoal -> 5 *)
 	(* , Method -> "SimulatedAnnealing" *)
 ];
@@ -714,15 +730,22 @@ minimum = NMinimize[ { areaGap[ polygons, Orthogonalize[{{a,b,c,Sqrt[1-a^2-b^2-c
 
 (* minimum = {1.260986342899173*^-6, {a -> 0.5405012878386299, b -> -0.48683326871328625, c -> 0.18404514760790477, d -> 0.22143595938603267, e -> -0.3645558603768601, f -> 0.37207780896596565}}; *)
 
+(* minimum = {4.6273857634560045*^-8, {a -> 0.39767486163522187, b -> 0.28205994191346956, c -> -0.5840767003205958, d -> 0.3746741052993101, e -> -0.31196541310248715, f -> 0.4773241679782298}} *)
+
+Print["minimum"];
 Print[minimum];
 
 If[Length[minimum] > 0,
 	projection42 = Orthogonalize[{{a,b,c,Sqrt[1-a^2-b^2-c^2]},{d,e,f,Sqrt[1-d^2-e^2-f^2] }}]/.minimum[[2]];
+	Print["projection matrix, norms, and inner product"];
 	Print[projection42];
 	Print[Norm/@projection42];
 	Print[Dot[projection42[[1]], projection42[[2]]]];
 
-	Print[  {Map[Area[Polygon[#]]&, Map[ projection42.#&, N[polygons], {2}]]}  ];
+	Print["subset areas"]
+	Print[areas[polygonsSubset, projection42]];
+
+	Print["all areas"]
 	Print[areas[polygons, projection42]];
 
 	(* Print[areaGap[ polygons, Orthogonalize[{{a,b,c,Sqrt[1-a^2-b^2-c^2]},{d,e,f,Sqrt[1-d^2-e^2-f^2] }}/.minimum[[2]] ] ] ]; *)
