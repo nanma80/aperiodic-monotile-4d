@@ -364,11 +364,93 @@ For[clock = 1, clock <= 12, clock++,
 	];
 ];
 
-For[keyId = 1, keyId <= Length[Keys[polygonTemplates]], keyId++,
+(* For[keyId = 1, keyId <= Length[Keys[polygonTemplates]], keyId++,
 	key = Keys[polygonTemplates][[keyId]];
 	value = polygonTemplates[key];
 	Print[{key, Length[value] }];
 ];
+ *)
+
+(* initialize *)
+mergedTiles = { polygon2d };
+mergedRegion = Region[ Polygon[ mergedTiles[[1]] ]];
+mergedGraphics = {};
+AppendTo[mergedGraphics, {RandomColor[], Polygon[ mergedTiles[[1]] ]} ];
+
+stepLimit = 100;
+
+For[stepId = 1, stepId <= stepLimit, stepId++,
+	graph = Graphics[ mergedGraphics ];
+	Export["output/test/naive_grow_" <> IntegerString[stepId]<> ".png", graph ];
+
+	mergedRegionPoints = getPoints[mergedRegion];
+	edges = getEdgesFromPoints[mergedRegionPoints];
+	relativeEdges = Map[#[[2]] - #[[1]] &, edges];
+	edgeDirections = Map[getDirection, relativeEdges];
+	edgeDirectionPairs = getEdgesFromFace[ edgeDirections ];
+	angles = Map[#[[2]] - #[[1]]&, edgeDirectionPairs ];
+	angles = Map[Mod[# + 180, 360]-180&, angles];
+
+	If[Total[angles] != 360,
+		Print["unexpected total angles: " <> IntegerString[Total[angles]] <> " Processing terminated. StepId: " <> IntegerString[stepId]];
+		Exit[];
+	];
+
+	(* Print[angles]; *)
+	negativeAngleIds = Select[Range[Length[angles]], angles[[#]] < 0 &];
+	(* Print[negativeAngleIds]; *)
+	minAngleId = RandomChoice[negativeAngleIds];
+	edgeDirectionPair = edgeDirectionPairs[[minAngleId]];
+	minAnglePoint = mergedRegionPoints[[minAngleId + 1]];
+
+	matchingDirectionPair = Reverse[Map[Mod[# + 180, 360]&, edgeDirectionPair ]];
+
+	If[!KeyExistsQ[polygonTemplates[matchingDirectionPair]],
+		Print["matchingDirectionPair not found. Processing terminated. StepId: " <> IntegerString[stepId]];
+		Print[matchingDirectionPair];
+		Exit[]
+	];
+
+	matchingCandidates = polygonTemplates[matchingDirectionPair];
+	disjointCandidates = {};
+
+	For[cid = 1, cid <= Length[matchingCandidates], cid++,
+		candidate = matchingCandidates[[cid]];
+		matchingPolygon = move[candidate, minAnglePoint];
+		matchingRegion = Region[Polygon[matchingPolygon]];
+		
+		If[regionDisjointByArea[mergedRegion, matchingRegion],
+			AppendTo[disjointCandidates, matchingPolygon];
+		];
+	];
+
+	If[Length[disjointCandidates] == 0,
+		Print["All candidate regions overlap with merged region. Processing terminated. StepId: " <> IntegerString[stepId]];
+		Exit[]
+	];
+
+	randomCandidatePick = RandomInteger[ {1, Length[disjointCandidates]} ];
+
+	Print["stepId: " <> IntegerString[stepId]
+		<> " Number of candidates: " <> IntegerString[Length[matchingCandidates]] 
+		<> " Number of Disjoint candidates: " <> IntegerString[Length[disjointCandidates]]
+		<> " Randomly picking #" <> IntegerString[randomCandidatePick]];
+
+	matchingPolygon = disjointCandidates[[randomCandidatePick]];
+	matchingRegion = Region[Polygon[matchingPolygon]];
+
+	mergedRegion = RegionUnion[mergedRegion, matchingRegion];
+	AppendTo[mergedTiles, matchingPolygon];
+	AppendTo[mergedGraphics, {RandomColor[], Polygon[ matchingPolygon ]} ];
+
+];
+
+graph = Graphics[ mergedGraphics ];
+Export["output/test/naive_grow_" <> IntegerString[stepId]<> ".png", graph ];
+
+
+(* Print[ polygonTemplates[matchingDirectionPair] ]; *)
+
 
 
 Exit[];
@@ -395,6 +477,7 @@ Print[regionDisjointByArea[region1, region2] ];
 ];
  *)
 region = region1;
+
 
 edges = getEdgesFromRegion[region];
 relativeEdges = Map[#[[2]] - #[[1]] &, edges];
