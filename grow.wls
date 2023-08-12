@@ -308,6 +308,8 @@ regionDisjointByArea[region1_, region2_] := Abs[ Area[region1] + Area[region2] -
 getPoints[region_] := Apply[List, RegionBoundary[region]][[1]];
 getEdgesFromPoints[face_] := Table[{face[[i]], face[[i + 1]]}, {i, 1, Length[face] - 1}];
 getEdgesFromRegion[region_] := getEdgesFromPoints[getPoints[region]];
+getDirection[vector2d_] := Mod[Round[Arg[vector2d[[1]] + I vector2d[[2]]]/Pi * 180.0], 360];
+
 
 projection42 = Transpose[{{1, 0, 1, 0}, {0, 1, 0, 1}}];
 
@@ -341,9 +343,37 @@ For[vid = 2, vid <= 14, vid++,
 
 polygon2d = polygon4d.projection42//N;
 
+polygonTemplates = <||>;
+
+For[clock = 1, clock <= 12, clock++,
+	rotationMatrix = RotationMatrix[2 Pi / 12 * clock];
+	rotatedPolygon = polygon2d.rotationMatrix;
+	For[ pointId = 1, pointId <= Length[rotatedPolygon], pointId++,
+		previousPointId = Mod[pointId - 1 -1, Length[rotatedPolygon]]+1;
+		nextPointId = Mod[pointId + 1 -1, Length[rotatedPolygon]]+1;
+		focusPoint = rotatedPolygon[[pointId]];
+		previousEdge = rotatedPolygon[[pointId]] - rotatedPolygon[[previousPointId]];
+		nextEdge = rotatedPolygon[[nextPointId]] - rotatedPolygon[[pointId]];
+		edgeDirections = Map[getDirection, {previousEdge, nextEdge}];
+
+		shiftedPolygon = move[rotatedPolygon, -focusPoint];
+		If[ !KeyExistsQ[ polygonTemplates, edgeDirections ],
+			polygonTemplates[edgeDirections] = {}
+		];
+		AppendTo[polygonTemplates[edgeDirections], shiftedPolygon];
+	];
+];
+
+For[keyId = 1, keyId <= Length[Keys[polygonTemplates]], keyId++,
+	key = Keys[polygonTemplates][[keyId]];
+	value = polygonTemplates[key];
+	Print[{key, Length[value] }];
+];
+
+
+Exit[];
+
 polygon2dshifted = move[polygon2d, (polygon2d[[11]] - polygon2d[[5]]) ];
-
-
 
 graph = Graphics[ Polygon[polygon2d] ];
 region1 = Region[Polygon[polygon2d]];
@@ -353,7 +383,8 @@ regionUnion = RegionUnion[region1, region2];
 
 Print[regionDisjointByArea[region1, region2] ];
 
-getAnglesFromRegion[region_] := Module[
+
+(* getAnglesFromRegion[region_] := Module[
 	{edges, relativeEdges, edgeDirections, angles, anglesMod},
 	edges = getEdgesFromRegion[region];
 	relativeEdges = Map[#[[2]] - #[[1]] &, edges];
@@ -362,11 +393,24 @@ getAnglesFromRegion[region_] := Module[
 	anglesMod = Map[Mod[# + 180, 360]-180&, angles];
 	anglesMod
 ];
+ *)
+region = region1;
 
-angles1 = getAnglesFromRegion[region1];
+edges = getEdgesFromRegion[region];
+relativeEdges = Map[#[[2]] - #[[1]] &, edges];
+edgeDirections = Map[Round[Arg[#[[1]] + I #[[2]]]/Pi * 180.0]&, relativeEdges];
+edgeDirectionPairs = getEdgesFromFace[ edgeDirections ];
+Print[edgeDirectionPairs];
+angles = Map[#[[2]] - #[[1]]&, edgeDirectionPairs ];
+angles = Map[Mod[# + 180, 360]-180&, angles];
+Print[angles];
+minAngle = Min[angles];
+Print[minAngle];
+minAngleId = Select[Range[Length[angles]], angles[[#]] == minAngle &][[1]];
+edgeDirectionPair = edgeDirectionPairs[[minAngleId]];
+Print[edgeDirectionPair];
 
-Print[angles1 ];
-Print[Total[angles1]];
+Exit[];
 
 anglesUnion = getAnglesFromRegion[regionUnion];
 Print[anglesUnion ];
