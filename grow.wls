@@ -35,7 +35,18 @@ shape = "chiral_tiling";
 (* shape = "nonchiral_tiling"; *)
 
 targetSlope = If[ shape == "chiral_tiling", ( (5 Sqrt[3] - Sqrt[5]) + I * (3 - 3 * Sqrt[15]) ) /14, (Sqrt[3] - Sqrt[5] I)/4];
-targetSlope = 1/targetSlope;
+(* targetSlope = 1/targetSlope; *)
+
+sr = Re[targetSlope];
+si = Im[targetSlope];
+
+orthProjection44 = {
+	{-sr, si, 1, 0}, 
+	{-si, -sr, 0, 1},
+	{1, 0, sr, si},
+	{0, 1, -si, sr}
+}/Sqrt[1 + sr^2 + si^2];
+orthProjection42 = orthProjection44[[{1,2}]];
 
 meshMethod = "";
 (* meshMethod = "design1"; *)
@@ -311,7 +322,7 @@ exportAnimation[] := Module[
 ];
 
 move[cells_, offset_] := Map[# + offset &, cells, {1}];
-regionDisjointByArea[region1_, region2_] := Abs[ Area[region1] + Area[region2] - Area[RegionUnion[region1, region2]] ] < epsilon;
+regionDisjointByArea[region1_, region2_] := Abs[ Area[region1] + Area[region2] - Area[RegionUnion[region1, region2]] ] < Sqrt[epsilon];
 getPoints[region_] := Apply[List, RegionBoundary[region]][[1]];
 getEdgesFromPoints[face_] := Table[{face[[i]], face[[i + 1]]}, {i, 1, Length[face] - 1}];
 getEdgesFromRegion[region_] := getEdgesFromPoints[getPoints[region]];
@@ -319,6 +330,12 @@ getDirection[vector2d_] := Mod[Round[Arg[vector2d[[1]] + I vector2d[[2]]]/Pi * 1
 
 
 projection42 = Transpose[{{1, 0, 1, 0}, {0, 1, 0, 1}}];
+flipDimensions = {
+	{0, 0, 1, 0},
+	{0, 0, 0, 1},
+	{1, 0, 0, 0},
+	{0, 1, 0, 0}
+};
 
 directions4d = {};
 For[clock = 1, clock <= 12, clock++,
@@ -364,6 +381,7 @@ For[clock = 1, clock <= 12, clock++,
 
 	rotationMatrix4d = rotate4d[2 Pi / 12 * clock];
 	rotatedPolygon4d = polygon4d.rotationMatrix4d;
+	If[ Mod[clock, 2] == 1, rotatedPolygon4d = rotatedPolygon4d.flipDimensions ];
 
 	For[ pointId = 1, pointId <= Length[rotatedPolygon], pointId++,
 		previousPointId = Mod[pointId - 1 -1, Length[rotatedPolygon]]+1;
@@ -422,8 +440,8 @@ For[stepId = 1, stepId <= stepLimit, stepId++,
 	];
 
 	(* Print[angles]; *)
-	(* negativeAngleIds = Select[Range[Length[angles]], angles[[#]] < 0 &]; *)
-	negativeAngleIds = Select[Range[Length[angles]], angles[[#]] == - 60 &];
+	negativeAngleIds = Select[Range[Length[angles]], angles[[#]] < 0 &];
+	(* negativeAngleIds = Select[Range[Length[angles]], angles[[#]] == - 60 &]; *)
 	(* Print[negativeAngleIds]; *)
 	negativeAnglePointNorms = Map[ Norm[mergedRegionPoints[[# + 1]]]&, negativeAngleIds ];
 	minNorm = Min[negativeAnglePointNorms];
@@ -461,11 +479,25 @@ For[stepId = 1, stepId <= stepLimit, stepId++,
 			candidate4d = matchingCandidates4d[[cid]];
 
 			all4dPoints = Flatten[mergedTiles4d, 1];
-			minAnglePoints4d = Union[ Select[all4dPoints, Norm[ #.projection42 - minAnglePoint] < epsilon & ], SameTest -> ApproxSamePoint];
+			minAnglePoints4d = Union[ Select[all4dPoints, Norm[ #.projection42 - minAnglePoint] < Sqrt[epsilon] & ], SameTest -> ApproxSamePoint];
 			If[Length[minAnglePoints4d] != 1,
 				Print["Fail to identify 4d points corresponding to minAnglePoint. Abort. Number of 4d candidates: " <> IntegerString[Length[minAnglePoints4d]] ];
 				Print[minAnglePoint];
 				Print[minAnglePoints4d];
+			
+				Print[edgeDirectionPair];
+				Print[matchingDirectionPair];
+
+				Print["tile by tile"];
+				Print[Length[mergedTiles4d]];
+
+				For[tid = 1, tid <= Length[mergedTiles4d], tid++,
+					Print[tid];
+					tile4d = mergedTiles4d[[tid]];
+					inTilePoints4d = Union[ Select[tile4d, Norm[ #.projection42 - minAnglePoint] < Sqrt[epsilon] & ], SameTest -> ApproxSamePoint];
+					Print[inTilePoints4d];
+				];
+
 				Exit[];
 			];
 
@@ -481,12 +513,21 @@ For[stepId = 1, stepId <= stepLimit, stepId++,
 	];
 
 	merged4dCenter = Mean[Flatten[mergedTiles4d, 1]];
-	Print[Length[Flatten[mergedTiles4d, 1]]];
-	Print[merged4dCenter];
+	(* Print[merged4dCenter]; *)
 	(* merged4dCenter = {0, 0, 0, 0}; *)
 
-	disjointCandidates4dCenterOffset = Map[(Mean[#]-merged4dCenter)&, disjointCandidates4d];
-	complexOffsets = Map[((#[[3]] + I * #[[4]])/(#[[1]] + I * #[[2]]))&, disjointCandidates4dCenterOffset];
+	disjointCandidates4dCenterOffset = Map[(Mean[#] - merged4dCenter)&, disjointCandidates4d];
+
+	(* Print[disjointCandidates4dCenterOffset//Length]; *)
+	(* Print[disjointCandidates4dCenterOffset.Transpose[orthProjection42]]; *)
+	orthErrors = Map[ Norm[#.Transpose[orthProjection42]]&, disjointCandidates4dCenterOffset ];
+	Print["orthErrors"];
+	Print[orthErrors];
+	candidatePick = Select[ Range[Length[orthErrors]], orthErrors[[#]] < Min[orthErrors] + epsilon & ][[1]];
+	
+
+(* compare complex *)
+(* 	complexOffsets = Map[((#[[3]] + I * #[[4]])/(#[[1]] + I * #[[2]]))&, disjointCandidates4dCenterOffset];
 	Print[];
 	Print["targetSlope"];
 	Print[targetSlope//N];
@@ -496,15 +537,19 @@ For[stepId = 1, stepId <= stepLimit, stepId++,
 	Print["complexErrors"];
 	Print[complexErrors];
 	candidatePick = Select[ Range[Length[complexErrors]], complexErrors[[#]] < Min[complexErrors] + epsilon & ][[1]];
-
+ *)
 	(* candidatePick = RandomInteger[ {1, Length[disjointCandidates]} ]; *)
 
 	(* override *)
-(* 	If[stepId == 4,
+(* 	If[stepId == 9,
 		candidatePick = 2;
 	];
 
-	If[stepId == 5,
+	If[stepId == 10,
+		candidatePick = 3;
+	];
+
+	If[stepId == 14,
 		candidatePick = 2;
 	];
  *)
@@ -512,7 +557,9 @@ For[stepId = 1, stepId <= stepLimit, stepId++,
 	Print["stepId: " <> IntegerString[stepId]
 		<> " Number of candidates: " <> IntegerString[Length[matchingCandidates]] 
 		<> " Number of Disjoint candidates: " <> IntegerString[Length[disjointCandidates]]
-		<> " Picking #" <> IntegerString[candidatePick]];
+		<> " Picking #" <> IntegerString[candidatePick]
+		<> " orth error: " <> ToString[orthErrors[[candidatePick]] ]
+	];
 
 	matchingPolygon = disjointCandidates[[candidatePick]];
 	matchingPolygon4d = disjointCandidates4d[[candidatePick]];
@@ -596,13 +643,6 @@ projection43[t_, s_] := {
 	projection44[t][[1]],
 	projection44[t][[2]],
 	(projection44[t][[3]] Cos[s] + projection44[t][[4]] Sin[s])
-};
-
-flipDimensions = {
-	{0, 0, 1, 0},
-	{0, 0, 0, 1},
-	{1, 0, 0, 0},
-	{0, 1, 0, 0}
 };
 
 mirror4D = DiagonalMatrix[{1,-1,1,-1}];
