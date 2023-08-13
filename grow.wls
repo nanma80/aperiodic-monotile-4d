@@ -23,6 +23,7 @@ topView = True;
 
 (* filterBy4d = False; *)
 filterBy4d = True;
+filePrefix = If[filterBy4d, "4d_plane", "naive_grow"];
 
 singleTile = False;
 (* singleTile = True; *)
@@ -34,7 +35,7 @@ shape = "chiral_tiling";
 (* shape = "nonchiral_tiling"; *)
 
 targetSlope = If[ shape == "chiral_tiling", ( (5 Sqrt[3] - Sqrt[5]) + I * (3 - 3 * Sqrt[15]) ) /14, (Sqrt[3] - Sqrt[5] I)/4];
-
+targetSlope = 1/targetSlope;
 
 meshMethod = "";
 (* meshMethod = "design1"; *)
@@ -391,7 +392,7 @@ For[clock = 1, clock <= 12, clock++,
 ];
  *)
 
-getColor[polygon_] := If[ Mod[ getDirection[polygon[[2]] - polygon[[1]]], 60 ] == 0, Black, RandomColor[]];
+getColor[polygon_] := If[ Mod[ getDirection[polygon[[2]] - polygon[[1]]], 60 ] == 0, Black, RandomColor[] ];
 (* getColor[polygon_] := RandomColor[]; *)
 
 (* initialize *)
@@ -405,7 +406,7 @@ stepLimit = 100;
 
 For[stepId = 1, stepId <= stepLimit, stepId++,
 	graph = Graphics[ mergedGraphics ];
-	Export["output/test/naive_grow_" <> IntegerString[stepId]<> ".png", graph ];
+	Export["output/test/" <> filePrefix <> "_" <> IntegerString[stepId]<> ".png", graph ];
 
 	mergedRegionPoints = getPoints[mergedRegion];
 	edges = getEdgesFromPoints[mergedRegionPoints];
@@ -421,7 +422,8 @@ For[stepId = 1, stepId <= stepLimit, stepId++,
 	];
 
 	(* Print[angles]; *)
-	negativeAngleIds = Select[Range[Length[angles]], angles[[#]] < 0 &];
+	(* negativeAngleIds = Select[Range[Length[angles]], angles[[#]] < 0 &]; *)
+	negativeAngleIds = Select[Range[Length[angles]], angles[[#]] == - 60 &];
 	(* Print[negativeAngleIds]; *)
 	negativeAnglePointNorms = Map[ Norm[mergedRegionPoints[[# + 1]]]&, negativeAngleIds ];
 	minNorm = Min[negativeAnglePointNorms];
@@ -479,14 +481,33 @@ For[stepId = 1, stepId <= stepLimit, stepId++,
 	];
 
 	merged4dCenter = Mean[Flatten[mergedTiles4d, 1]];
+	Print[Length[Flatten[mergedTiles4d, 1]]];
+	Print[merged4dCenter];
+	(* merged4dCenter = {0, 0, 0, 0}; *)
+
 	disjointCandidates4dCenterOffset = Map[(Mean[#]-merged4dCenter)&, disjointCandidates4d];
-	complexOffsets = Map[((#[[3]] + I#[[4]])/(#[[1]] + I#[[2]]))&, disjointCandidates4dCenterOffset];
+	complexOffsets = Map[((#[[3]] + I * #[[4]])/(#[[1]] + I * #[[2]]))&, disjointCandidates4dCenterOffset];
+	Print[];
+	Print["targetSlope"];
+	Print[targetSlope//N];
+	Print["complexOffsets"];
+	Print[complexOffsets];
 	complexErrors = Map[ Norm[# - targetSlope]&, complexOffsets ];
 	Print["complexErrors"];
 	Print[complexErrors];
 	candidatePick = Select[ Range[Length[complexErrors]], complexErrors[[#]] < Min[complexErrors] + epsilon & ][[1]];
 
 	(* candidatePick = RandomInteger[ {1, Length[disjointCandidates]} ]; *)
+
+	(* override *)
+(* 	If[stepId == 4,
+		candidatePick = 2;
+	];
+
+	If[stepId == 5,
+		candidatePick = 2;
+	];
+ *)
 
 	Print["stepId: " <> IntegerString[stepId]
 		<> " Number of candidates: " <> IntegerString[Length[matchingCandidates]] 
@@ -504,8 +525,7 @@ For[stepId = 1, stepId <= stepLimit, stepId++,
 ];
 
 graph = Graphics[ mergedGraphics ];
-Export["output/test/naive_grow_" <> IntegerString[stepId]<> ".png", graph ];
-
+Export["output/test/" <> filePrefix <> "_" <> IntegerString[stepId]<> ".png", graph ];
 
 (* Print[ polygonTemplates[matchingDirectionPair] ]; *)
 
@@ -708,6 +728,7 @@ slopeVector2 = {0, 1, - Im[targetComplexSlope], -Re[targetComplexSlope]}//N;
  *)
 targetSlope = If[ shape == "chiral_tiling", ( (5 Sqrt[3] - Sqrt[5]) + I * (3 - 3 * Sqrt[15]) ) /14, (Sqrt[3] - Sqrt[5] I)/4];
 (* targetSlope = 1/targetSlope; *)
+
 sr = Re[targetSlope];
 si = Im[targetSlope];
 slopeVector1 = {sr, -si, -1, 0}/Norm[{1, sr, si}]//N;
