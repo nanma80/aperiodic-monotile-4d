@@ -21,14 +21,20 @@ frameCount = 100;
 (* topView = False; *)
 topView = True;
 
+(* filterBy4d = False; *)
+filterBy4d = True;
+
 singleTile = False;
 (* singleTile = True; *)
 
 (* fullRotation = False; *)
 fullRotation = True;
 
-(* shape = "chiral_tiling"; *)
-shape = "nonchiral_tiling";
+shape = "chiral_tiling";
+(* shape = "nonchiral_tiling"; *)
+
+targetSlope = If[ shape == "chiral_tiling", ( (5 Sqrt[3] - Sqrt[5]) + I * (3 - 3 * Sqrt[15]) ) /14, (Sqrt[3] - Sqrt[5] I)/4];
+
 
 meshMethod = "";
 (* meshMethod = "design1"; *)
@@ -334,7 +340,7 @@ For[did = 1, did <= Length[directions4d], did++,
 
 directionsInPolygon = {6, 4, 7, 5, 2, 4, 1, 3, 12, 10, 10, 8, 11, 9, 6};
 
-polygon4d = {{0, 0, 0, 0}};
+polygon4d = {{0, 0, 0, 0}}//N;
 For[vid = 2, vid <= 14, vid++,
 	lastPoint = Last[polygon4d];
 	newPoint = lastPoint + directions4d[[ directionsInPolygon[[vid]] ]];
@@ -344,10 +350,20 @@ For[vid = 2, vid <= 14, vid++,
 polygon2d = polygon4d.projection42//N;
 
 polygonTemplates = <||>;
+polygonTemplates4d = <||>;
+
+rotate4d[angle_] := ArrayFlatten[{
+	{RotationMatrix[angle], 0}, 
+	{0, RotationMatrix[angle]}}
+];
 
 For[clock = 1, clock <= 12, clock++,
 	rotationMatrix = RotationMatrix[2 Pi / 12 * clock];
 	rotatedPolygon = polygon2d.rotationMatrix;
+
+	rotationMatrix4d = rotate4d[2 Pi / 12 * clock];
+	rotatedPolygon4d = polygon4d.rotationMatrix4d;
+
 	For[ pointId = 1, pointId <= Length[rotatedPolygon], pointId++,
 		previousPointId = Mod[pointId - 1 -1, Length[rotatedPolygon]]+1;
 		nextPointId = Mod[pointId + 1 -1, Length[rotatedPolygon]]+1;
@@ -357,10 +373,14 @@ For[clock = 1, clock <= 12, clock++,
 		edgeDirections = Map[getDirection, {previousEdge, nextEdge}];
 
 		shiftedPolygon = move[rotatedPolygon, -focusPoint];
+		shiftedPolygon4d = move[rotatedPolygon4d, -rotatedPolygon4d[[pointId]]];
+
 		If[ !KeyExistsQ[ polygonTemplates, edgeDirections ],
-			polygonTemplates[edgeDirections] = {}
+			polygonTemplates[edgeDirections] = {};
+			polygonTemplates4d[edgeDirections] = {}
 		];
 		AppendTo[polygonTemplates[edgeDirections], shiftedPolygon];
+		AppendTo[polygonTemplates4d[edgeDirections], shiftedPolygon4d];
 	];
 ];
 
@@ -371,11 +391,15 @@ For[clock = 1, clock <= 12, clock++,
 ];
  *)
 
+getColor[polygon_] := If[ Mod[ getDirection[polygon[[2]] - polygon[[1]]], 60 ] == 0, Black, RandomColor[]];
+(* getColor[polygon_] := RandomColor[]; *)
+
 (* initialize *)
 mergedTiles = { polygon2d };
+mergedTiles4d = { polygon4d };
 mergedRegion = Region[ Polygon[ mergedTiles[[1]] ]];
 mergedGraphics = {};
-AppendTo[mergedGraphics, {RandomColor[], Polygon[ mergedTiles[[1]] ]} ];
+AppendTo[mergedGraphics, {getColor[mergedTiles[[1]]], Polygon[ mergedTiles[[1]] ]} ];
 
 stepLimit = 100;
 
@@ -399,7 +423,14 @@ For[stepId = 1, stepId <= stepLimit, stepId++,
 	(* Print[angles]; *)
 	negativeAngleIds = Select[Range[Length[angles]], angles[[#]] < 0 &];
 	(* Print[negativeAngleIds]; *)
-	minAngleId = RandomChoice[negativeAngleIds];
+	negativeAnglePointNorms = Map[ Norm[mergedRegionPoints[[# + 1]]]&, negativeAngleIds ];
+	minNorm = Min[negativeAnglePointNorms];
+
+	(* pick point closest to origin *)
+	minAngleId = Select[ Range[Length[angles]], Norm[mergedRegionPoints[[# + 1]]] < minNorm + epsilon &  ][[1]];
+
+	(* random *)
+	(* minAngleId = RandomChoice[negativeAngleIds]; *)
 	edgeDirectionPair = edgeDirectionPairs[[minAngleId]];
 	minAnglePoint = mergedRegionPoints[[minAngleId + 1]];
 
@@ -414,13 +445,31 @@ For[stepId = 1, stepId <= stepLimit, stepId++,
 	matchingCandidates = polygonTemplates[matchingDirectionPair];
 	disjointCandidates = {};
 
+	matchingCandidates4d = polygonTemplates4d[matchingDirectionPair];
+	disjointCandidates4d = {};
+
 	For[cid = 1, cid <= Length[matchingCandidates], cid++,
 		candidate = matchingCandidates[[cid]];
 		matchingPolygon = move[candidate, minAnglePoint];
 		matchingRegion = Region[Polygon[matchingPolygon]];
-		
+
 		If[regionDisjointByArea[mergedRegion, matchingRegion],
 			AppendTo[disjointCandidates, matchingPolygon];
+
+			candidate4d = matchingCandidates4d[[cid]];
+
+			all4dPoints = Flatten[mergedTiles4d, 1];
+			minAnglePoints4d = Union[ Select[all4dPoints, Norm[ #.projection42 - minAnglePoint] < epsilon & ], SameTest -> ApproxSamePoint];
+			If[Length[minAnglePoints4d] != 1,
+				Print["Fail to identify 4d points corresponding to minAnglePoint. Abort. Number of 4d candidates: " <> IntegerString[Length[minAnglePoints4d]] ];
+				Print[minAnglePoint];
+				Print[minAnglePoints4d];
+				Exit[];
+			];
+
+			minAnglePoint4d = minAnglePoints4d[[1]];
+			matchingPolygon4d = move[candidate4d, minAnglePoint4d];
+			AppendTo[disjointCandidates4d, matchingPolygon4d];
 		];
 	];
 
@@ -429,20 +478,29 @@ For[stepId = 1, stepId <= stepLimit, stepId++,
 		Exit[]
 	];
 
-	randomCandidatePick = RandomInteger[ {1, Length[disjointCandidates]} ];
+	merged4dCenter = Mean[Flatten[mergedTiles4d, 1]];
+	disjointCandidates4dCenterOffset = Map[(Mean[#]-merged4dCenter)&, disjointCandidates4d];
+	complexOffsets = Map[((#[[3]] + I#[[4]])/(#[[1]] + I#[[2]]))&, disjointCandidates4dCenterOffset];
+	complexErrors = Map[ Norm[# - targetSlope]&, complexOffsets ];
+	Print["complexErrors"];
+	Print[complexErrors];
+	candidatePick = Select[ Range[Length[complexErrors]], complexErrors[[#]] < Min[complexErrors] + epsilon & ][[1]];
+
+	(* candidatePick = RandomInteger[ {1, Length[disjointCandidates]} ]; *)
 
 	Print["stepId: " <> IntegerString[stepId]
 		<> " Number of candidates: " <> IntegerString[Length[matchingCandidates]] 
 		<> " Number of Disjoint candidates: " <> IntegerString[Length[disjointCandidates]]
-		<> " Randomly picking #" <> IntegerString[randomCandidatePick]];
+		<> " Picking #" <> IntegerString[candidatePick]];
 
-	matchingPolygon = disjointCandidates[[randomCandidatePick]];
+	matchingPolygon = disjointCandidates[[candidatePick]];
+	matchingPolygon4d = disjointCandidates4d[[candidatePick]];
 	matchingRegion = Region[Polygon[matchingPolygon]];
 
 	mergedRegion = RegionUnion[mergedRegion, matchingRegion];
 	AppendTo[mergedTiles, matchingPolygon];
-	AppendTo[mergedGraphics, {RandomColor[], Polygon[ matchingPolygon ]} ];
-
+	AppendTo[mergedTiles4d, matchingPolygon4d];
+	AppendTo[mergedGraphics, {getColor[matchingPolygon], Polygon[ matchingPolygon ]} ];
 ];
 
 graph = Graphics[ mergedGraphics ];
@@ -462,9 +520,7 @@ region1 = Region[Polygon[polygon2d]];
 region2 = Region[Polygon[polygon2dshifted]];
 regionUnion = RegionUnion[region1, region2];
 
-
 Print[regionDisjointByArea[region1, region2] ];
-
 
 (* getAnglesFromRegion[region_] := Module[
 	{edges, relativeEdges, edgeDirections, angles, anglesMod},
