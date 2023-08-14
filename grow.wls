@@ -71,7 +71,7 @@ imageSize = 720/3 * {4, 3};
 
 truncateThreshold = 2;
 
-range = 10;
+range = 25;
 (* If[singleTile, 3, If[shape == "spectre", 10, 8]]; (* change to 10 *) *)
 thickness = 0.02;
 
@@ -358,14 +358,16 @@ For[did = 1, did <= Length[directions4d], did++,
 
 directionsInPolygon = {6, 4, 7, 5, 2, 4, 1, 3, 12, 10, 10, 8, 11, 9, 6};
 
-polygon4d = {{0, 0, 0, 0}}//N;
+polygon4d = {{0, 0, 0, 0}};
 For[vid = 2, vid <= 14, vid++,
 	lastPoint = Last[polygon4d];
 	newPoint = lastPoint + directions4d[[ directionsInPolygon[[vid]] ]];
 	AppendTo[polygon4d, newPoint];
 ];
 
-polygon2d = polygon4d.projection42//N;
+polygon2d = polygon4d.projection42;
+polygon4d = N[polygon4d];
+polygon2d = N[polygon2d];
 
 polygonTemplates = <||>;
 polygonTemplates4d = <||>;
@@ -410,7 +412,7 @@ For[clock = 1, clock <= 12, clock++,
 ];
  *)
 
-getColor[polygon_] := If[ Mod[ getDirection[polygon[[2]] - polygon[[1]]], 60 ] == 0, Black, RandomColor[] ];
+getColor[polygon_] := If[ Mod[ getDirection[polygon[[2]] - polygon[[1]]], 60 ] == 0, Black, Lighter[RandomColor[], 0.2] ];
 (* getColor[polygon_] := RandomColor[]; *)
 
 (* initialize *)
@@ -421,14 +423,19 @@ mergedGraphics = {};
 AppendTo[mergedGraphics, {getColor[mergedTiles[[1]]], Polygon[ mergedTiles[[1]] ]} ];
 
 stepLimit = 100;
+stepId = 1;
+graph = Graphics[ mergedGraphics , PlotRange -> {{-range, range}, {-range, range}} ];
+Export["output/test/" <> filePrefix <> "_" <> IntegerString[stepId, 10, 3]<> ".png", graph ];
 
-For[stepId = 1, stepId <= stepLimit, stepId++,
-	graph = Graphics[ mergedGraphics ];
-	Export["output/test/" <> filePrefix <> "_" <> IntegerString[stepId]<> ".png", graph ];
+
+For[stepId = 2, stepId <= stepLimit, stepId++,
+	Print[];
+	Print["Starting stepId " <> IntegerString[stepId]];
 
 	mergedRegionPoints = getPoints[mergedRegion];
 	edges = getEdgesFromPoints[mergedRegionPoints];
 	relativeEdges = Map[#[[2]] - #[[1]] &, edges];
+	Print[Tally[Round[Norm/@relativeEdges, epsilon]]];
 	edgeDirections = Map[getDirection, relativeEdges];
 	edgeDirectionPairs = getEdgesFromFace[ edgeDirections ];
 	angles = Map[#[[2]] - #[[1]]&, edgeDirectionPairs ];
@@ -453,8 +460,11 @@ For[stepId = 1, stepId <= stepLimit, stepId++,
 	(* minAngleId = RandomChoice[negativeAngleIds]; *)
 	edgeDirectionPair = edgeDirectionPairs[[minAngleId]];
 	minAnglePoint = mergedRegionPoints[[minAngleId + 1]];
-
 	matchingDirectionPair = Reverse[Map[Mod[# + 180, 360]&, edgeDirectionPair ]];
+
+	Print[minAnglePoint];
+	Print[edgeDirectionPair];
+	Print[matchingDirectionPair];
 
 	If[!KeyExistsQ[polygonTemplates[matchingDirectionPair]],
 		Print["matchingDirectionPair not found. Processing terminated. StepId: " <> IntegerString[stepId]];
@@ -468,12 +478,27 @@ For[stepId = 1, stepId <= stepLimit, stepId++,
 	matchingCandidates4d = polygonTemplates4d[matchingDirectionPair];
 	disjointCandidates4d = {};
 
+	Print["matchingCandidates count " <> IntegerString[ Length[matchingCandidates] ]];
+
 	For[cid = 1, cid <= Length[matchingCandidates], cid++,
 		candidate = matchingCandidates[[cid]];
+		
 		matchingPolygon = move[candidate, minAnglePoint];
 		matchingRegion = Region[Polygon[matchingPolygon]];
 
-		If[regionDisjointByArea[mergedRegion, matchingRegion],
+(* 		If[stepId == 24 && cid == 3, 
+			Print["test starts"];
+			Print[mergedRegion];
+			Print[matchingRegion];
+			regionDisjointByArea[matchingRegion, mergedRegion];
+			Print["test ends"];
+		];
+ *)
+		Print["testing region disjoint testing"];
+		regionDisjoint = regionDisjointByArea[matchingRegion, mergedRegion];
+		Print["finished region disjoint testing " <> ToString[regionDisjoint]];
+
+		If[regionDisjoint,
 			AppendTo[disjointCandidates, matchingPolygon];
 
 			candidate4d = matchingCandidates4d[[cid]];
@@ -506,6 +531,8 @@ For[stepId = 1, stepId <= stepLimit, stepId++,
 			AppendTo[disjointCandidates4d, matchingPolygon4d];
 		];
 	];
+
+	Print["disjointCandidates count " <> IntegerString[ Length[disjointCandidates] ]];
 
 	If[Length[disjointCandidates] == 0,
 		Print["All candidate regions overlap with merged region. Processing terminated. StepId: " <> IntegerString[stepId]];
@@ -541,18 +568,10 @@ For[stepId = 1, stepId <= stepLimit, stepId++,
 	(* candidatePick = RandomInteger[ {1, Length[disjointCandidates]} ]; *)
 
 	(* override *)
-(* 	If[stepId == 9,
+(* 	If[stepId == 31,
 		candidatePick = 2;
-	];
+	]; *)
 
-	If[stepId == 10,
-		candidatePick = 3;
-	];
-
-	If[stepId == 14,
-		candidatePick = 2;
-	];
- *)
 
 	Print["stepId: " <> IntegerString[stepId]
 		<> " Number of candidates: " <> IntegerString[Length[matchingCandidates]] 
@@ -565,269 +584,22 @@ For[stepId = 1, stepId <= stepLimit, stepId++,
 	matchingPolygon4d = disjointCandidates4d[[candidatePick]];
 	matchingRegion = Region[Polygon[matchingPolygon]];
 
-	mergedRegion = RegionUnion[mergedRegion, matchingRegion];
+	(* need my own region union function *)
+	Print["starting region union of selected tile"];
+	mergedRegion = RegionUnion[matchingRegion, mergedRegion];
+	Print["Finished region union of selected tile"];
 	AppendTo[mergedTiles, matchingPolygon];
 	AppendTo[mergedTiles4d, matchingPolygon4d];
 	AppendTo[mergedGraphics, {getColor[matchingPolygon], Polygon[ matchingPolygon ]} ];
+	Print["Completing step id " <> IntegerString[stepId] ];
+	graph = Graphics[ mergedGraphics , PlotRange -> {{-range, range}, {-range, range}} ];
+	Export["output/test/" <> filePrefix <> "_" <> IntegerString[stepId, 10, 3]<> ".png", graph ];
 ];
 
-graph = Graphics[ mergedGraphics ];
-Export["output/test/" <> filePrefix <> "_" <> IntegerString[stepId]<> ".png", graph ];
 
 (* Print[ polygonTemplates[matchingDirectionPair] ]; *)
 
 
-
-Exit[];
-
-polygon2dshifted = move[polygon2d, (polygon2d[[11]] - polygon2d[[5]]) ];
-
-graph = Graphics[ Polygon[polygon2d] ];
-region1 = Region[Polygon[polygon2d]];
-region2 = Region[Polygon[polygon2dshifted]];
-regionUnion = RegionUnion[region1, region2];
-
-Print[regionDisjointByArea[region1, region2] ];
-
-(* getAnglesFromRegion[region_] := Module[
-	{edges, relativeEdges, edgeDirections, angles, anglesMod},
-	edges = getEdgesFromRegion[region];
-	relativeEdges = Map[#[[2]] - #[[1]] &, edges];
-	edgeDirections = Map[Arg[#[[1]] + I #[[2]]]/Pi * 180.0&, relativeEdges];
-	angles = Round[Map[#[[2]] - #[[1]]&, getEdgesFromFace[ edgeDirections ] ]];
-	anglesMod = Map[Mod[# + 180, 360]-180&, angles];
-	anglesMod
-];
- *)
-region = region1;
-
-
-edges = getEdgesFromRegion[region];
-relativeEdges = Map[#[[2]] - #[[1]] &, edges];
-edgeDirections = Map[Round[Arg[#[[1]] + I #[[2]]]/Pi * 180.0]&, relativeEdges];
-edgeDirectionPairs = getEdgesFromFace[ edgeDirections ];
-Print[edgeDirectionPairs];
-angles = Map[#[[2]] - #[[1]]&, edgeDirectionPairs ];
-angles = Map[Mod[# + 180, 360]-180&, angles];
-Print[angles];
-minAngle = Min[angles];
-Print[minAngle];
-minAngleId = Select[Range[Length[angles]], angles[[#]] == minAngle &][[1]];
-edgeDirectionPair = edgeDirectionPairs[[minAngleId]];
-Print[edgeDirectionPair];
-
-Exit[];
-
-anglesUnion = getAnglesFromRegion[regionUnion];
-Print[anglesUnion ];
-Print[Total[anglesUnion]];
-
-
-
-(* Exit[]; *)
-Export["output/test/grow_test.png", graph ];
-Export["output/test/grow_test_region.png", region1 ];
-Export["output/test/grow_test_region2.png", regionUnion ];
-
-Exit[];
-
-projection44[t_] := {
-	{Cos[t], 0, Sin[t], 0},
-	{0, Cos[t], 0, Sin[t]},
-	{-Sin[t], 0, Cos[t], 0},
-	{0, -Sin[t], 0, Cos[t]}
-};
-
-(* projection43[t_] := projection44[t][[{1, 2, 3}]]; *)
-projection43[t_, s_] := {
-	projection44[t][[1]],
-	projection44[t][[2]],
-	(projection44[t][[3]] Cos[s] + projection44[t][[4]] Sin[s])
-};
-
-mirror4D = DiagonalMatrix[{1,-1,1,-1}];
-
-parallelogramIds[ startIds_, d1_, d2_] := {
-	startIds,
-	Join[startIds, d1],
-	Join[startIds, d1, d2],
-	Join[startIds, d2]
-};
-
-cellsIds = {
-	parallelogramIds[{}, {4}, {5}],
-	parallelogramIds[{1}, {4}, {5}],
-	parallelogramIds[{8}, {4}, {5}],
-	parallelogramIds[{1, 8}, {4}, {5}],
-
-	parallelogramIds[{}, {4}, {1}],
-	parallelogramIds[{5}, {4}, {1}],
-	parallelogramIds[{8}, {4}, {1}],
-	parallelogramIds[{5, 8}, {4}, {1}],
-
-	parallelogramIds[{}, {4}, {8}],
-	parallelogramIds[{5}, {4}, {8}],
-	parallelogramIds[{1}, {4}, {8}],
-	parallelogramIds[{5, 1}, {4}, {8}],
-
-	parallelogramIds[{}, {5}, {1}],
-	parallelogramIds[{4}, {5}, {1}],
-	parallelogramIds[{8}, {5}, {1}],
-	parallelogramIds[{4, 8}, {5}, {1}],
-
-	parallelogramIds[{}, {5}, {8}],	
-	parallelogramIds[{4}, {5}, {8}],	
-	parallelogramIds[{1}, {5}, {8}],	
-	parallelogramIds[{4, 1}, {5}, {8}],	
-
-	parallelogramIds[{}, {1}, {8}],
-	parallelogramIds[{4}, {1}, {8}],
-	parallelogramIds[{5}, {1}, {8}],
-	parallelogramIds[{4, 5}, {1}, {8}]
-};
-
-cell1 = Map[If[# == {}, {0,0,0,0},Total[directions[[#]]] ]& , cellsIds, {2}];
-
-intersectingFaces[fid_, vectorId_] := Total[Map[Length[Intersection[#, {vectorId}]]&, cellsIds[[fid]] ]];
-
-faceIdsInThreeFaces = {};
-AppendTo[faceIdsInThreeFaces, Select[Range[Length[cellsIds]], intersectingFaces[#, 1] == 0 &] ];
-AppendTo[faceIdsInThreeFaces, Select[Range[Length[cellsIds]], intersectingFaces[#, 1] == 4 &] ];
-AppendTo[faceIdsInThreeFaces, Select[Range[Length[cellsIds]], intersectingFaces[#, 4] == 0 &] ];
-AppendTo[faceIdsInThreeFaces, Select[Range[Length[cellsIds]], intersectingFaces[#, 4] == 4 &] ];
-AppendTo[faceIdsInThreeFaces, Select[Range[Length[cellsIds]], intersectingFaces[#, 5] == 0 &] ];
-AppendTo[faceIdsInThreeFaces, Select[Range[Length[cellsIds]], intersectingFaces[#, 5] == 4 &] ];
-AppendTo[faceIdsInThreeFaces, Select[Range[Length[cellsIds]], intersectingFaces[#, 8] == 0 &] ];
-AppendTo[faceIdsInThreeFaces, Select[Range[Length[cellsIds]], intersectingFaces[#, 8] == 4 &] ];
-
-rotate[angle1_, angle2_] := ArrayFlatten[{
-	{RotationMatrix[angle1/180*Pi], 0}, 
-	{0, RotationMatrix[angle2/180*Pi]}}
-];
-
-move[cells_, offset_] := Map[# + offset &, cells, {3}];
-rotateCell[cell_, angle1_, angle2_] := Map[rotate[angle1, angle2].# &, cell, {2} ];
-
-gridThreshold = Round[truncateThreshold * 1.5];
-triangleGrid = Flatten[Table[{a + b Cos[Pi/3], b Sin[Pi/3]}, {a, -gridThreshold, gridThreshold}, {b, -gridThreshold, gridThreshold}], 1];
-
-triangleGrid = Select[triangleGrid, Norm[#] < truncateThreshold + epsilon & ];
-
-cells = {cell1};
-cells = Join[cells, Map[rotateCell[#, 120, 0]&, cells], Map[rotateCell[#, 240, 0]&, cells]];
-cells = Join[cells, Map[rotateCell[#, 0, 120]&, cells], Map[rotateCell[#, 0, 240]&, cells]];
-Print[Length[cells]];
-
-cells = Apply[Join, Map[move[cells, { 2 Sqrt[3] #[[1]], 2 Sqrt[3] #[[2]], 0, 0 } ]&, triangleGrid]];
-Print[Length[cells]];
-
-cells = Apply[Join, Map[move[cells, {0, 0, 2 Sqrt[3] #[[2]], 2 Sqrt[3] #[[1]] } ]&, triangleGrid]];
-Print["Generated cells: " <> IntegerString[Length[cells]]];
-
-cells = move[cells, {0.4324, 0.168, 0.22, 0.347}/10];
-
-If[selectionMethod == "2face", 
-	faces = N[Flatten[cells, 1]];
-	Print[faces//Length];
-	(* uniqueFaces = Union[faces, SameTest -> sameCenter]; *)
-	uniqueFaces = faces;
-	Print[uniqueFaces//Length];
-	cells = Map[{#}&, uniqueFaces];
-];
-
-If[selectionMethod == "3face",
-	outputCells = {};
-	For[cid = 1, cid <= Length[cells], cid++,
-		cell = cells[[cid]];
-		threeFaces = {};
-		For[fid = 1, fid <= Length[faceIdsInThreeFaces], fid++,
-			AppendTo[outputCells, cell[[ faceIdsInThreeFaces[[fid]] ]] ];
-		];
-	];
-
-	Print[Length[outputCells]];
-	cells = outputCells;
-
-	(* uniqueOutputCells = Union[outputCells, SameTest -> sameCellCenter]; *)
-	(* Print[Length[uniqueOutputCells]]; *)
-	(* cells = uniqueOutputCells; *)
-
-];
-
-Print["After applying selectionMethod " <> selectionMethod <> " the count of selection unit is " <> IntegerString[Length[cells]]];
-
-cellCenters = Map[getCellCenter[#]&, cells];
-(* cellCenters = Map[getCellCenter[#] - getCellCenter[cell1]&, cells]; *)
-
-(* for spectre tiling *)
-(* 0.45887043288175683 - 0.615639288473018*I *)
-(* targetComplexSlope = ( (5 Sqrt[3] - Sqrt[5]) + I * (3 - 3 * Sqrt[15]) ) /14;
-targetComplexSlope = 1/targetComplexSlope;
-slopeVector1 = {1, 0, - Re[targetComplexSlope], Im[targetComplexSlope]}//N;
-slopeVector2 = {0, 1, - Im[targetComplexSlope], -Re[targetComplexSlope]}//N;
- *)
-targetSlope = If[ shape == "chiral_tiling", ( (5 Sqrt[3] - Sqrt[5]) + I * (3 - 3 * Sqrt[15]) ) /14, (Sqrt[3] - Sqrt[5] I)/4];
-(* targetSlope = 1/targetSlope; *)
-
-sr = Re[targetSlope];
-si = Im[targetSlope];
-slopeVector1 = {sr, -si, -1, 0}/Norm[{1, sr, si}]//N;
-slopeVector2 = {si, sr, 0, -1}/Norm[{1, sr, si}]//N;
-(* slopeVector1 = {1, 0, - sr, si}//N; *)
-(* slopeVector2 = {0, 1, -si, -sr}//N; *)
-
-
-(* z + wi = (sr + i si)(x+iy) = sr x - si y + i(si x + sr y)
-sr x - si y - z = 0
-si x + sr y - w = 0
-[sr, -si, -1, 0]
-[si, sr, 0, -1 ]
- *)
-
-cellsToKeep = {};
-(* complexPerturbation = Table[0.1, {k, 4}]; *)
-(* complexPerturbation = {0, 1., -1, 0}; *)
-complexPerturbation = {0, 0, 0, 0};
-
-epsilonFactor = If[intersectionIncludeBoundary, -1, 1];
-
-For[cid = 1, cid <= Length[cells], cid++,
-	If[Mod[cid, 1000] == 0, Print["Processing cell " <> IntegerString[cid]]];
-	cell = cells[[cid]];
-	anyFaceCrossingTarget = False;
-	For[fid = 1, fid <= Length[cell], fid++,
-		face = Map[# + complexPerturbation &, cell[[fid]]]//N;
-		matrix22 = {
-			{(face[[2]] - face[[1]]).slopeVector1, (face[[4]] - face[[1]]).slopeVector1},
-			{(face[[2]] - face[[1]]).slopeVector2, (face[[4]] - face[[1]]).slopeVector2}
-		};
-		offsets = -{
-			{face[[1]].slopeVector1},
-			{face[[1]].slopeVector2}
-		};
-
-		If[Abs[Det[matrix22]] < epsilon, Print["skip"]; Continue[]];
-
-		lambdas = Inverse[matrix22].offsets;
-		lambdas = Transpose[lambdas][[1]];
-		rhombusIntersects = lambdas[[1]] > epsilonFactor epsilon && lambdas[[1]] < 1 - epsilonFactor epsilon && lambdas[[2]] > epsilonFactor epsilon && lambdas[[2]] < 1 - epsilonFactor epsilon;
-
-		If[rhombusIntersects,
-			(* Print["face " <> IntegerString[fid] <> " crossing cell " <> IntegerString[cid]]; *)
-			anyFaceCrossingTarget = True;
-			Break[];
-		];
-	];
-	If[anyFaceCrossingTarget,
-		AppendTo[cellsToKeep, cid];
-	];
-];
-
-Print["cells to keep: " <> IntegerString[Length[cellsToKeep]]];
-cells = cells[[cellsToKeep]];
-
-exportImage[cells, Pi/4, Pi/4, 45, "intersection_selection"];
-exportImage[cells, Pi/6, Pi/4, 30, "intersection_selection"];
-exportImage[cells, Pi/3, Pi/4, 60, "intersection_selection"];
-
-
+(* 
+magick convert -quiet +repage -alpha remove -loop 0 -delay 30 .\output\test\*.png -delay 300 .\output\test\4d_plane_036.png grow.gif
+*)
