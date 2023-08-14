@@ -614,6 +614,10 @@ Print["average case"];
 Print[ Apply[complexMeanError, Table[1/14, {k, 13}] ] ];
 (* Exit[]; *)
 
+Print["center of 3, 11"];
+Print[ Apply[complexMeanError, {0, 0, 1/2, 0, 0, 0, 0, 0, 0, 0, 1/2, 0, 0} ] ];
+
+
 (* vector = {0.518131, 0.566107, 0.842635, 0.117211, -0.391416, 0.0852854, 0.409671, 0.576152, 0.598847, 0.356776, -0.203696, 0.964536, 0.998889}
 vector = Join[ vector, { 1 - Total[vector]} ];
 Print[vector];

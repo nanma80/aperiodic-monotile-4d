@@ -427,6 +427,14 @@ stepId = 1;
 graph = Graphics[ mergedGraphics , PlotRange -> {{-range, range}, {-range, range}} ];
 Export["output/test/" <> filePrefix <> "_" <> IntegerString[stepId, 10, 3]<> ".png", graph ];
 
+optimalWeights = {0.03236986736060123, 0.07799316476924252, -0.05911191295628166, -0.17176748426831062, -0.08708542852278012, -0.04146222358595754, 0.09564273392713142, 0.12009210847871328, 0.15915097318708082, 0.11352767411505187, 0.06790425612793533, -0.016777888519672258, 0.09587778350167393};
+AppendTo[ optimalWeights, 1 - Total[optimalWeights]];
+
+(* getCenter[tile_] := Mean[tile]; *)
+(* getCenter[tile_] := (tile[[3]] + tile[[11]])/2; *)
+getCenter[tile_] := optimalWeights.tile;
+
+(* Exit[]; *)
 
 For[stepId = 2, stepId <= stepLimit, stepId++,
 	Print[];
@@ -539,11 +547,14 @@ For[stepId = 2, stepId <= stepLimit, stepId++,
 		Exit[]
 	];
 
-	merged4dCenter = Mean[Flatten[mergedTiles4d, 1]];
+	mergedTileCenters = Map[getCenter, mergedTiles4d];
+	merged4dCenter = Mean[mergedTileCenters];
+
+	(* merged4dCenter = Mean[Flatten[mergedTiles4d, 1]]; *)
 	(* Print[merged4dCenter]; *)
 	(* merged4dCenter = {0, 0, 0, 0}; *)
 
-	disjointCandidates4dCenterOffset = Map[(Mean[#] - merged4dCenter)&, disjointCandidates4d];
+	disjointCandidates4dCenterOffset = Map[(getCenter[#] - merged4dCenter)&, disjointCandidates4d];
 
 	(* Print[disjointCandidates4dCenterOffset//Length]; *)
 	(* Print[disjointCandidates4dCenterOffset.Transpose[orthProjection42]]; *)
