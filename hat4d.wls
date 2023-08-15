@@ -27,8 +27,8 @@ singleTile = False;
 (* fullRotation = False; *)
 fullRotation = True;
 
-(* shape = "spectre_4d"; *)
-shape = "hat_4d";
+shape = "spectre_4d";
+(* shape = "hat_4d"; *)
 
 (* meshMethod = ""; *)
 (* meshMethod = "design1"; *)
@@ -536,6 +536,8 @@ getSpectreTiling[polygon4d_] := Module[
 	hat38 = offset[hat28, -hat28[[12]] + hat32[[8]]];
 	hat39 = offset[hat6, -hat6[[12]] + turtle5[[6]]];
 
+	refPoint4d = hat21[[1]];
+
 	polygons = {
 		turtle1,	hat1,	hat2,	hat3,	hat4,	hat5,	hat6,	hat7,	hat8,	hat9,
 		turtle2,	hat10,	hat11,	hat12,	hat13,	hat14,	hat15,	hat16,	hat17,	hat18,
@@ -622,6 +624,10 @@ colors = Map[ Hue[ Mod[Arg[#[[1]] + I #[[2]]]/2/Pi , 1] ]&, vector12s];
 center = Mean[Map[Mean, polygons]];
 polygons = Map[offset[#, - center ]&, polygons];
 
+(* Print[refPoint4d];
+Print[center - refPoint4d//N];
+Exit[];
+ *)
 
 (* For[id = 0, id <= 6 * 4, id++,
 	exportImage[polygons, id/6*Pi/2, id, "test"];

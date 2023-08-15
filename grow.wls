@@ -465,11 +465,15 @@ For[stepId = 2, stepId <= stepLimit, stepId++,
 	negativeAngleIds = Select[Range[Length[angles]], angles[[#]] < 0 &];
 	(* negativeAngleIds = Select[Range[Length[angles]], angles[[#]] == - 60 &]; *)
 	(* Print[negativeAngleIds]; *)
-	negativeAnglePointNorms = Map[ Norm[mergedRegionPoints[[# + 1]]]&, negativeAngleIds ];
+	minNormRefPoint = {0, 0};
+	If[stepId >= 46,
+		minNormRefPoint = {15, 0};
+	];
+	negativeAnglePointNorms = Map[ Norm[mergedRegionPoints[[# + 1]] - minNormRefPoint]&, negativeAngleIds ];
 	minNorm = Min[negativeAnglePointNorms];
 
 	(* pick point closest to origin *)
-	minAngleId = Select[ Range[Length[angles]], Norm[mergedRegionPoints[[# + 1]]] < minNorm + epsilon &  ][[1]];
+	minAngleId = Select[ Range[Length[angles]], Norm[mergedRegionPoints[[# + 1]] - minNormRefPoint] < minNorm + epsilon &  ][[1]];
 
 	(* random *)
 	(* minAngleId = RandomChoice[negativeAngleIds]; *)
@@ -565,8 +569,9 @@ For[stepId = 2, stepId <= stepLimit, stepId++,
 	merged4dCenter = Mean[mergedTileCenters];
 
 	(* merged4dCenter = Mean[Flatten[mergedTiles4d, 1]]; *)
-	(* Print[merged4dCenter]; *)
-	merged4dCenter = {0, 0, 0, 0};
+	merged4dCenter = {-0.487012987012987, 1.602709351159513, 0.3374124949809501, 1.0422077922077921};
+	Print["merged4dCenter: " <> ToString[merged4dCenter]];
+	(* merged4dCenter = {0, 0, 0, 0}; *)
 
 	disjointCandidates4dCenterOffset = Map[(getCenter[#] - merged4dCenter)&, disjointCandidates4d];
 
