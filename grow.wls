@@ -323,11 +323,18 @@ exportAnimation[] := Module[
 
 move[cells_, offset_] := Map[# + offset &, cells, {1}];
 regionDisjointByArea[region1_, region2_] := Abs[ Area[region1] + Area[region2] - Area[RegionUnion[region1, region2]] ] < Sqrt[epsilon];
+(* regionDisjointByIntersection[region1_, region2_] := Area[ RegionIntersection[region1, region2] ] < Sqrt[epsilon]; *)
+
 getPoints[region_] := Apply[List, RegionBoundary[region]][[1]];
 getEdgesFromPoints[face_] := Table[{face[[i]], face[[i + 1]]}, {i, 1, Length[face] - 1}];
 getEdgesFromRegion[region_] := getEdgesFromPoints[getPoints[region]];
 getDirection[vector2d_] := Mod[Round[Arg[vector2d[[1]] + I vector2d[[2]]]/Pi * 180.0], 360];
 
+regionDisjointByTile[onePolygon_, manyPolygons_] := Module[
+	{nearbyPolygons},
+	nearbyPolygons = Select[manyPolygons, EuclideanDistance[ Mean[#], Mean[onePolygon] ]< 10 &];
+	AllTrue[nearbyPolygons, regionDisjointByArea[ Region[Polygon[onePolygon]], Region[Polygon[#]] ]&]
+];
 
 projection42 = Transpose[{{1, 0, 1, 0}, {0, 1, 0, 1}}];
 flipDimensions = {
@@ -503,10 +510,13 @@ For[stepId = 2, stepId <= stepLimit, stepId++,
 		];
  *)
 		Print["testing region disjoint testing"];
-		If[stepId == 46 && cid == 5, 
+(* 		If[(stepId == 46 && cid == 5), 
 			Print[matchingRegion];
 			Print[mergedRegion];
 		];
+ *)
+		(* regionDisjoint = regionDisjointByTile[matchingPolygon, mergedTiles]; *)
+
 		regionDisjoint = regionDisjointByArea[matchingRegion, mergedRegion];
 		Print["finished region disjoint testing " <> ToString[regionDisjoint]];
 
