@@ -569,15 +569,21 @@ For[stepId = 2, stepId <= stepLimit, stepId++,
 	merged4dCenter = Mean[mergedTileCenters];
 
 	(* merged4dCenter = Mean[Flatten[mergedTiles4d, 1]]; *)
-	merged4dCenter = {-0.487012987012987, 1.602709351159513, 0.3374124949809501, 1.0422077922077921};
-	Print["merged4dCenter: " <> ToString[merged4dCenter]];
+	(* merged4dCenter = {-0.487012987012987, 1.602709351159513, 0.3374124949809501, 1.0422077922077921}; *)
+	(* {-0.337729, 0.00551049} *)
+	(* Print["merged4dCenter: " <> ToString[merged4dCenter]]; *)
+	merged4dCenterProjection = merged4dCenter.Transpose[orthProjection42];
+	merged4dCenterProjection = {-0.2, 0};
+	Print["merged4dCenterProjection: " <> ToString[merged4dCenterProjection]];
 	(* merged4dCenter = {0, 0, 0, 0}; *)
 
-	disjointCandidates4dCenterOffset = Map[(getCenter[#] - merged4dCenter)&, disjointCandidates4d];
+	disjointCandidates4dCenterOffset = Map[(getCenter[#].Transpose[orthProjection42])&, disjointCandidates4d];
+	Print["disjointCandidates4dCenterOffset"];
+	Print[disjointCandidates4dCenterOffset];
 
 	(* Print[disjointCandidates4dCenterOffset//Length]; *)
 	(* Print[disjointCandidates4dCenterOffset.Transpose[orthProjection42]]; *)
-	orthErrors = Map[ Norm[#.Transpose[orthProjection42]]&, disjointCandidates4dCenterOffset ];
+	orthErrors = Map[ Norm[# - merged4dCenterProjection]&, disjointCandidates4dCenterOffset ];
 	Print["orthErrors"];
 	Print[orthErrors];
 	candidatePick = Select[ Range[Length[orthErrors]], orthErrors[[#]] < Min[orthErrors] + epsilon & ][[1]];

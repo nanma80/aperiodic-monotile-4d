@@ -27,8 +27,8 @@ singleTile = True;
 (* fullRotation = False; *)
 fullRotation = True;
 
-(* shape = "spectre_4d"; *)
-shape = "hat_4d";
+shape = "spectre_4d";
+(* shape = "hat_4d"; *)
 
 (* meshMethod = ""; *)
 (* meshMethod = "design1"; *)
@@ -43,13 +43,17 @@ rotationDirection = "";
 projectionDirection = "orthogonalToAsymptoticPlane";
 (* projectionDirection = "strip"; *)
 
+(* exportToPov = False; *)
 exportToPov = True;
+
 dataFolder = "data";
 imageFolder = "output";
 imageSize = 720/3 * {4, 3};
 
 range = If[singleTile, 3, If[shape == "spectre_4d", 10, 8]]; (* change to 10 *)
+(* range = 13; *)
 thickness = 0.05;
+thickness = 0.01;
 
 shapeWithParams = shape <> If[topView, "", "_sideView"] <> If[fullRotation, "", "_quarterTurn"] <> If[singleTile, "_singleTile", ""] <> If[meshMethod == "", "", "_" <> meshMethod] <> If[rotationDirection == "", "", "_" <> rotationDirection] <> If[projectionDirection == "", "", "_" <> projectionDirection] <> "_" <> IntegerString[frameCount];
 
@@ -72,6 +76,7 @@ lightSource = {50, -50, 50};
 lighting = {{"Point", White, lightSource * 10}};
 
 lightingRotation = RotationMatrix[{{50, -35, 40}, {0, 0, 1.}}];
+(* lightingRotation = IdentityMatrix[3]; *)
 
 roundPrecision = 0.000001;
 phi = (1 + Sqrt[5])/2;
@@ -274,6 +279,7 @@ exportImage[polygons_, theta_, sigma_, serialNumber_, frameFolder_] := Module[
 		PlotRange -> {{-range, range}, {-range, range}, {-range, range}},
 		(* Lighting -> lighting, *)
 		Boxed -> False
+		(* Axes -> True *)
 		(* ViewAngle -> range/Norm[viewPoint]/100/6.7 *)
 	];
 
@@ -450,8 +456,8 @@ If[projectionDirection == "orthogonalToAsymptoticPlane",
 	projection44[t_] := {
 		{-sr, si, 1, 0}, 
 		{-si, -sr, 0, 1},
-		{1, 0, sr, si},
-		{0, 1, -si, sr}
+		{1, 0, sr, si} * 0.001,
+		{0, 1, -si, sr} * 0.001
 	}/Sqrt[1 + sr^2 + si^2];
 ];
 
@@ -631,9 +637,11 @@ polygons = Map[offset[#, - center ]&, polygons];
 ];
  *)
 
-For[polygonId = 1, polygonId <= Length[polygons], polygonId++,
+(* For[polygonId = 1, polygonId <= Length[polygons], polygonId++,
 	exportImage[polygons[[ {polygonId} ]], 0, 0, polygonId, "test_tiles_orth_projection_" <> shape];
 ];
+ *)
 
+exportImage[polygons, 0, 0, 1, "test"];
 
 (* exportAnimation[]; *)
