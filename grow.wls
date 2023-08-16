@@ -566,20 +566,28 @@ For[stepId = 2, stepId <= stepLimit, stepId++,
 	];
 
 	mergedTileCenters = Map[getCenter, mergedTiles4d];
-	merged4dCenter = Mean[mergedTileCenters];
+	mergedTileCentersProjection = mergedTileCenters.Transpose[orthProjection42];
+	boundingRegion = BoundingRegion[mergedTileCentersProjection, "MinDisk"];
+	diskCenter = RegionCentroid[boundingRegion];
+	(* Print["mergedTileCentersProjection"]; *)
+	(* Print[mergedTileCentersProjection]; *)
+	Print["diskCenter"];
+	Print[diskCenter];
+
+	(* merged4dCenter = Mean[mergedTileCenters]; *)
 
 	(* merged4dCenter = Mean[Flatten[mergedTiles4d, 1]]; *)
 	(* merged4dCenter = {-0.487012987012987, 1.602709351159513, 0.3374124949809501, 1.0422077922077921}; *)
 	(* {-0.337729, 0.00551049} *)
 	(* Print["merged4dCenter: " <> ToString[merged4dCenter]]; *)
-	merged4dCenterProjection = merged4dCenter.Transpose[orthProjection42];
-	merged4dCenterProjection = {-0.2, 0};
+	(* merged4dCenterProjection = merged4dCenter.Transpose[orthProjection42]; *)
+	merged4dCenterProjection = diskCenter;
 	Print["merged4dCenterProjection: " <> ToString[merged4dCenterProjection]];
 	(* merged4dCenter = {0, 0, 0, 0}; *)
 
 	disjointCandidates4dCenterOffset = Map[(getCenter[#].Transpose[orthProjection42])&, disjointCandidates4d];
-	Print["disjointCandidates4dCenterOffset"];
-	Print[disjointCandidates4dCenterOffset];
+	(* Print["disjointCandidates4dCenterOffset"]; *)
+	(* Print[disjointCandidates4dCenterOffset]; *)
 
 	(* Print[disjointCandidates4dCenterOffset//Length]; *)
 	(* Print[disjointCandidates4dCenterOffset.Transpose[orthProjection42]]; *)
