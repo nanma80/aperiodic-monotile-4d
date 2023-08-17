@@ -514,13 +514,13 @@ For[stepId = 2, stepId <= stepLimit, stepId++,
 		];
  *)
 		Print["testing region disjoint testing"];
-(* 		If[(stepId == 46 && cid == 5), 
+(* 		If[(stepId == 45 && cid == 2), 
 			Print[matchingRegion];
 			Print[mergedRegion];
+			regionDisjoint = regionDisjointByArea[mergedRegion, matchingRegion ],
+			regionDisjoint = regionDisjointByArea[matchingRegion, mergedRegion];
 		];
  *)
-		(* regionDisjoint = regionDisjointByTile[matchingPolygon, mergedTiles]; *)
-
 		regionDisjoint = regionDisjointByArea[matchingRegion, mergedRegion];
 		Print["finished region disjoint testing " <> ToString[regionDisjoint]];
 
@@ -587,17 +587,24 @@ For[stepId = 2, stepId <= stepLimit, stepId++,
 	(* merged4dCenterProjection = merged4dCenter.Transpose[orthProjection42]; *)
 	merged4dCenterProjection = diskCenter;
 	(* merged4dCenterProjection = {-0.32, -0.1}; *)
-	merged4dCenterProjection = {0, -0.4};
+	(* merged4dCenterProjection = {0, -0.4}; *)
 	Print["merged4dCenterProjection: " <> ToString[merged4dCenterProjection]];
 	(* merged4dCenter = {0, 0, 0, 0}; *)
 
-	disjointCandidates4dCenterOffset = Map[(getCenter[#].Transpose[orthProjection42])&, disjointCandidates4d];
+(* 	disjointCandidates4dCenterOffset = Map[(getCenter[#].Transpose[orthProjection42])&, disjointCandidates4d];
 	Print["disjointCandidates4dCenterOffset"];
 	Print[disjointCandidates4dCenterOffset];
-
+ *)
 	(* Print[disjointCandidates4dCenterOffset//Length]; *)
 	(* Print[disjointCandidates4dCenterOffset.Transpose[orthProjection42]]; *)
-	orthErrors = Map[ Norm[# - merged4dCenterProjection]&, disjointCandidates4dCenterOffset ];
+	(* orthErrors = Map[ Norm[# - merged4dCenterProjection]&, disjointCandidates4dCenterOffset ]; *)
+	orthErrors = {};
+	For[cid = 1, cid <= Length[disjointCandidates4d], cid++,
+		candidate4d = disjointCandidates4d[[cid]];
+		projected2d = candidate4d.Transpose[orthProjection42];
+		max2dDistance = Max[Map[Norm[# - merged4dCenterProjection] &, projected2d]];
+		AppendTo[orthErrors, max2dDistance];
+	];
 	Print["orthErrors"];
 	Print[orthErrors];
 	candidatePick = Select[ Range[Length[orthErrors]], orthErrors[[#]] < Min[orthErrors] + epsilon & ][[1]];
