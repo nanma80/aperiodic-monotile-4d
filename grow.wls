@@ -513,7 +513,7 @@ For[stepId = 2, stepId <= stepLimit, stepId++,
 			Print["test ends"];
 		];
  *)
-		Print["testing region disjoint testing"];
+		Print["testing region disjoint testing " <> IntegerString[stepId] <> " " <> IntegerString[cid] ];
 (* 		If[(stepId == 45 && cid == 2), 
 			Print[matchingRegion];
 			Print[mergedRegion];
@@ -522,7 +522,7 @@ For[stepId = 2, stepId <= stepLimit, stepId++,
 		];
  *)
 		regionDisjoint = regionDisjointByArea[matchingRegion, mergedRegion];
-		Print["finished region disjoint testing " <> ToString[regionDisjoint]];
+		Print["finished region disjoint testing " <> ToString[regionDisjoint] <> " " <> IntegerString[stepId] <> " " <> IntegerString[cid]];
 
 		If[regionDisjoint,
 			AppendTo[disjointCandidates, matchingPolygon];
