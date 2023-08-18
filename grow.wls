@@ -330,10 +330,32 @@ getEdgesFromPoints[face_] := Table[{face[[i]], face[[i + 1]]}, {i, 1, Length[fac
 getEdgesFromRegion[region_] := getEdgesFromPoints[getPoints[region]];
 getDirection[vector2d_] := Mod[Round[Arg[vector2d[[1]] + I vector2d[[2]]]/Pi * 180.0], 360];
 
+getConvexParts[polygon_] := {
+	polygon[[{1, 2, 12, 13, 14}]],
+	polygon[[{2,3,4,5,11,12}]],
+	polygon[[{5,6,7,11}]],
+	polygon[[{7,8,9,10,11}]]
+};
+
 regionDisjointByTile[onePolygon_, manyPolygons_] := Module[
 	{nearbyPolygons},
-	nearbyPolygons = Select[manyPolygons, EuclideanDistance[ Mean[#], Mean[onePolygon] ]< 10 &];
+	nearbyPolygons = Select[manyPolygons, EuclideanDistance[ Mean[#], Mean[onePolygon] ] < 10 &];
 	AllTrue[nearbyPolygons, regionDisjointByArea[ Region[Polygon[onePolygon]], Region[Polygon[#]] ]&]
+];
+
+regionDisjointByConvexParts[onePolygon_, manyPolygons_] := Module[
+	{nearbyPolygons, partsFromOnePolygon, partsFromNearbyPolygons, overlapping, pid, part1, part1NotOverlapping},
+	nearbyPolygons = Select[manyPolygons, EuclideanDistance[ Mean[#], Mean[onePolygon] ] < 10 &];
+	partsFromOnePolygon = getConvexParts[onePolygon];
+	partsFromNearbyPolygons = Flatten[Map[getConvexParts, manyPolygons], 1];
+	overlapping = False;
+	For[pid = 1, pid<=Length[partsFromOnePolygon], pid++,
+		part1 = partsFromOnePolygon[[pid]];
+		part1NotOverlapping = AllTrue[partsFromNearbyPolygons, regionDisjointByArea[ Region[Polygon[part1]], Region[Polygon[#]] ]&];
+		If[part1NotOverlapping == False, Return[False]];
+	];
+
+	True
 ];
 
 projection42 = Transpose[{{1, 0, 1, 0}, {0, 1, 0, 1}}];
@@ -521,7 +543,11 @@ For[stepId = 2, stepId <= stepLimit, stepId++,
 			regionDisjoint = regionDisjointByArea[matchingRegion, mergedRegion];
 		];
  *)
-		regionDisjoint = regionDisjointByArea[matchingRegion, mergedRegion];
+		(* regionDisjoint = regionDisjointByArea[matchingRegion, mergedRegion]; *)
+
+		regionDisjoint = regionDisjointByConvexParts[matchingPolygon, mergedTiles];
+		
+
 		Print["finished region disjoint testing " <> ToString[regionDisjoint] <> " " <> IntegerString[stepId] <> " " <> IntegerString[cid]];
 
 		If[regionDisjoint,
