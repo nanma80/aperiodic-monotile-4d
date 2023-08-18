@@ -548,9 +548,9 @@ result:
 mergePolygons[polygon1_, polygon2_, contactPoint_] := Module[
 	{},
 	pids1 = Select[Range[Length[polygon1]], Norm[polygon1[[#]] - contactPoint] < epsilon& ];
-	Print[pids1];
+	If[verbose, Print[pids1]];
 	pids2 = Select[Range[Length[polygon2]], Norm[polygon2[[#]] - contactPoint] < epsilon& ];
-	Print[pids2];
+	If[verbose, Print[pids2]];
 	If[Length[pids1] != 1 || Length[pids2] != 1,
 		Print["unexpected number of pids1 or pids2:"];
 		Print[pids1];
@@ -586,7 +586,7 @@ mergePolygons[polygon1_, polygon2_, contactPoint_] := Module[
 		rotatedPolygon1[[ Range[ nextPointId, Length[rotatedPolygon1] + 2 - previousPointId ] ]],
 		rotatedPolygon2[[ Range[ previousPointId + 1, Length[rotatedPolygon2] - nextPointId + 1 ] ]]
 	];
-	If[verbose, Print["mergedPolygon length: " <> IntegerString[Length[mergedPolygon]] ]];
+	If[verbose || True, Print["mergedPolygon length: " <> IntegerString[Length[mergedPolygon]] ]];
 	mergedPolygon
 ];
 
@@ -745,14 +745,15 @@ For[stepId = 2, stepId <= stepLimit, stepId++,
 	(* mergedTileCentersProjection = mergedTileCenters.Transpose[orthProjection42]; *)
 
 	merged4dAllPoints = Flatten[mergedTiles4d, 1];
-	boundingRegion = BoundingRegion[merged4dAllPoints.Transpose[orthProjection42], "MinDisk"];
+	mergedPointsProjected = merged4dAllPoints.Transpose[orthProjection42];
+	boundingRegion = BoundingRegion[mergedPointsProjected, "MinDisk"];
 
 	(* boundingRegion = BoundingRegion[mergedTileCentersProjection, "MinDisk"]; *)
 	diskCenter = RegionCentroid[boundingRegion];
 	(* Print["mergedTileCentersProjection"]; *)
 	(* Print[mergedTileCentersProjection]; *)
-	Print["diskCenter"];
-	Print[diskCenter];
+	radiusMinDisk = Max[Map[Norm[# - diskCenter]&, mergedPointsProjected]];
+	Print["diskCenter and radius: " <> ToString[{diskCenter, radiusMinDisk}]];
 
 	(* merged4dCenter = Mean[mergedTileCenters]; *)
 
@@ -763,7 +764,8 @@ For[stepId = 2, stepId <= stepLimit, stepId++,
 	(* merged4dCenterProjection = merged4dCenter.Transpose[orthProjection42]; *)
 	merged4dCenterProjection = diskCenter;
 	(* merged4dCenterProjection = {-0.32, -0.1}; *)
-	(* merged4dCenterProjection = {0, -0.4}; *)
+	(* merged4dCenterProjection = {0.609717, -0.727913}; *)
+	(* merged4dCenterProjection = {-0.337729, 0.00551049}; *)
 	Print["merged4dCenterProjection: " <> ToString[merged4dCenterProjection]];
 	(* merged4dCenter = {0, 0, 0, 0}; *)
 
