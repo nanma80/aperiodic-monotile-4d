@@ -12,6 +12,9 @@ python -m SimpleHTTPServer 8000
 
 (* global config *)
 
+verbose = False;
+(* verbose = True; *)
+
 (* frameCount = 2; *)
 (* frameCount = 5; *)
 (* frameCount = 10; *)
@@ -475,7 +478,8 @@ getColor[polygon_] := If[ Mod[ getDirection[polygon[[2]] - polygon[[1]]], 60 ] =
 (* initialize *)
 mergedTiles = { polygon2d };
 mergedTiles4d = { polygon4d };
-mergedRegion = Region[ Polygon[ mergedTiles[[1]] ]];
+mergedPatchPolygon = mergedTiles[[1]];
+mergedRegion = Region[ Polygon[ mergedPatchPolygon ]];
 mergedGraphics = {};
 AppendTo[mergedGraphics, {getColor[mergedTiles[[1]]], Polygon[ mergedTiles[[1]] ]} ];
 
@@ -493,11 +497,104 @@ getCenter[tile_] := Mean[tile];
 
 (* Exit[]; *)
 
+candidateDisjointCheck[candidate_, angles_, minAngleId_] := Module[
+	{},
+	candidateVertexId = Select[Range[Length[candidate]], Norm[candidate[[#]]] < epsilon &][[1]];
+	candidateAngleId = Mod[candidateVertexId - 2, Length[candidate]] + 1;
+	
+	candidateEdges = getEdgesFromFace[candidate];
+	candidateRelativeEdges = Map[#[[2]] - #[[1]] &, candidateEdges];
+	candidateEdgeDirections = Map[getDirection, candidateRelativeEdges];
+	candidateEdgeDirectionPairs = getEdgesFromFace[ candidateEdgeDirections ];
+	candidateAngles = Map[#[[2]] - #[[1]]&, candidateEdgeDirectionPairs ];
+	candidateAngles = Map[Mod[# + 180, 360]-180&, candidateAngles];
+
+	If[verbose,
+		Print["candidate ids"];
+		Print[candidateAngleId];
+		Print[candidateAngles];
+	];
+	
+	disjointTest = True;
+	For[nextAngleId = 1, nextAngleId <= Length[candidate], nextAngleId++,
+		mergedAngle = angles[[ Mod[minAngleId + nextAngleId - 1, Length[angles]] + 1 ]];
+		candidateAngle = candidateAngles[[ Mod[candidateAngleId - nextAngleId - 1, Length[candidateAngles]] + 1 ]];
+		If[verbose,Print[{nextAngleId, mergedAngle, candidateAngle}]];
+		If[mergedAngle + candidateAngle > 0, If[verbose,Print["break nextAngleId: " <> IntegerString[nextAngleId]]]; Break[]]; (* edges diverge, no need to track *)
+		If[mergedAngle + candidateAngle == 0, If[verbose,Print["continue nextAngleId: " <> IntegerString[nextAngleId]]]; Continue[]]; (* edges match, continue to check *)
+		If[mergedAngle + candidateAngle < 0, If[verbose,Print["set false nextAngleId: " <> IntegerString[nextAngleId]]]; disjointTest = False; Break[]; ]; (* overlapping *)
+	];
+	If[disjointTest == True,
+		For[previousAngleId = 1, previousAngleId <= Length[candidate], previousAngleId++,
+			mergedAngle = angles[[ Mod[minAngleId - previousAngleId - 1, Length[angles]] + 1 ]];
+			candidateAngle = candidateAngles[[ Mod[candidateAngleId + previousAngleId - 1, Length[candidateAngles]] + 1 ]];
+			If[verbose,Print[{previousAngleId, mergedAngle, candidateAngle}]];
+			If[mergedAngle + candidateAngle > 0, If[verbose,Print["break previousAngleId: " <> IntegerString[previousAngleId]]]; Break[]]; (* edges diverge, no need to track *)
+			If[mergedAngle + candidateAngle == 0, If[verbose,Print["continue previousAngleId: " <> IntegerString[previousAngleId]]]; Continue[]]; (* edges match, continue to check *)
+			If[mergedAngle + candidateAngle < 0, If[verbose,Print["set false previousAngleId: " <> IntegerString[previousAngleId]]]; disjointTest = False; Break[]; ]; (* overlapping *)
+		];
+	];
+	disjointTest
+];
+
+(* example:
+{contact, p1, *start to keep* p2, p3, p4, n5, n4, n3, n2, n1*end of keep*}
+{contact, n1, *start to keep* n6, p6 *end of keep*, p2, p1}
+
+result:
+{p2, p3, p4, n5, n4, n3, n2, n1,    n6, p6}
+ *)
+
+mergePolygons[polygon1_, polygon2_, contactPoint_] := Module[
+	{},
+	pids1 = Select[Range[Length[polygon1]], Norm[polygon1[[#]] - contactPoint] < epsilon& ];
+	Print[pids1];
+	pids2 = Select[Range[Length[polygon2]], Norm[polygon2[[#]] - contactPoint] < epsilon& ];
+	Print[pids2];
+	If[Length[pids1] != 1 || Length[pids2] != 1,
+		Print["unexpected number of pids1 or pids2:"];
+		Print[pids1];
+		Print[pids2];
+		Exit[];
+	];
+	pid1 = pids1[[1]];
+	pid2 = pids2[[1]];
+	rotatedPolygon1 = RotateLeft[polygon1, pid1 - 1];
+	rotatedPolygon2 = RotateLeft[polygon2, pid2 - 1];
+
+	startIndex1 = 1;
+	endIndex1 = Length[rotatedPolygon1];
+	startIndex2 = 1;
+	endIndex2 = Length[rotatedPolygon2];
+
+	For[nextPointId = 1, nextPointId <= Length[rotatedPolygon2], nextPointId++,
+		pointMatching = ApproxSamePoint[ rotatedPolygon1[[nextPointId + 1 ]], rotatedPolygon2[[ Length[rotatedPolygon2] - nextPointId + 1 ]] ];
+		If[pointMatching == False, Break[]];
+	];
+	If[verbose, Print["nextPointId: " <> IntegerString[nextPointId] ]];
+	
+	(* next point id = 3 *)
+
+	For[previousPointId = 1, previousPointId <= Length[rotatedPolygon2], previousPointId++,
+		pointMatching = ApproxSamePoint[ rotatedPolygon2[[previousPointId + 1 ]], rotatedPolygon1[[ Length[rotatedPolygon1] - previousPointId + 1 ]] ];
+		If[pointMatching == False, Break[]];
+	];
+	If[verbose, Print["previousPointId: " <> IntegerString[previousPointId] ]];
+	(* prevoius point id = 2 *)
+	
+	mergedPolygon = Join[
+		rotatedPolygon1[[ Range[ nextPointId, Length[rotatedPolygon1] + 2 - previousPointId ] ]],
+		rotatedPolygon2[[ Range[ previousPointId + 1, Length[rotatedPolygon2] - nextPointId + 1 ] ]]
+	];
+	If[verbose, Print["mergedPolygon length: " <> IntegerString[Length[mergedPolygon]] ]];
+	mergedPolygon
+];
+
 For[stepId = 2, stepId <= stepLimit, stepId++,
 	Print[];
 	Print["Starting stepId " <> IntegerString[stepId]];
 
-	originalRegionPoints = getPoints[mergedRegion];
+	(* originalRegionPoints = getPoints[mergedRegion];
 	mergedRegionPoints = { originalRegionPoints[[1]] };
 	For[pointId = 2, pointId <= Length[originalRegionPoints], pointId++,
 		edgeLength = Norm[ originalRegionPoints[[pointId - 1]] - originalRegionPoints[[pointId]] ];
@@ -510,8 +607,10 @@ For[stepId = 2, stepId <= stepLimit, stepId++,
 				Exit[];
 			];
 		];
-	];
+	]; *)
 
+	(* edges = getEdgesFromFace[mergedPatchPolygon]; *)
+	mergedRegionPoints = Join[ mergedPatchPolygon, mergedPatchPolygon[[{1}]] ];
 	edges = getEdgesFromPoints[mergedRegionPoints];
 	relativeEdges = Map[#[[2]] - #[[1]] &, edges];
 	Print[Tally[Round[Norm/@relativeEdges, epsilon]]];
@@ -549,10 +648,12 @@ For[stepId = 2, stepId <= stepLimit, stepId++,
 	Print[edgeDirectionPair];
 	Print[matchingDirectionPair];
 
-	Print["merged region angles"];
-	Print[minAngleId];
-	Print[angles];
-
+	If[verbose,
+		Print["merged region angles"];
+		Print[minAngleId];
+		Print[angles];
+	];
+	
 	If[!KeyExistsQ[polygonTemplates[matchingDirectionPair]],
 		Print["matchingDirectionPair not found. Processing terminated. StepId: " <> IntegerString[stepId]];
 		Print[matchingDirectionPair];
@@ -573,22 +674,7 @@ For[stepId = 2, stepId <= stepLimit, stepId++,
 		matchingPolygon = move[candidate, minAnglePoint];
 		matchingRegion = Region[Polygon[matchingPolygon]];
 
-(* 		If[stepId == 26 && cid == 4, 
-			Print["test starts"];
-			Print[mergedRegion];
-			Print[matchingRegion];
-			Print["test union 1"];
-			Print[RegionUnion[matchingRegion, mergedRegion]];
-			Print["test union 2"];
-			Print[RegionUnion[BoundaryDiscretizeRegion[matchingRegion], BoundaryDiscretizeRegion[mergedRegion]]];
-			Print["test disjoint"];
-
-			regionDisjointByArea[matchingRegion, mergedRegion];
-			Print["test ends"];
-		];
- *)
- 		Print[];
-		Print["testing region disjoint testing " <> IntegerString[stepId] <> " " <> IntegerString[cid] ];
+		If[verbose,Print["testing region disjoint testing " <> IntegerString[stepId] <> " " <> IntegerString[cid] ];];
 (* 		If[(stepId == 45 && cid == 2), 
 			Print[matchingRegion];
 			Print[mergedRegion];
@@ -600,40 +686,6 @@ For[stepId = 2, stepId <= stepLimit, stepId++,
 		(* Print["original disjoint test: " <> ToString[regionDisjoint]]; *)
 		(* regionDisjoint = regionDisjointByConvexParts[matchingPolygon, mergedTiles]; *)
 
-		candidateVertexId = Select[Range[Length[candidate]], Norm[candidate[[#]]] < epsilon &][[1]];
-		candidateAngleId = Mod[candidateVertexId - 2, Length[candidate]] + 1;
-		
-		candidateEdges = getEdgesFromFace[candidate];
-		candidateRelativeEdges = Map[#[[2]] - #[[1]] &, candidateEdges];
-		candidateEdgeDirections = Map[getDirection, candidateRelativeEdges];
-		candidateEdgeDirectionPairs = getEdgesFromFace[ candidateEdgeDirections ];
-		candidateAngles = Map[#[[2]] - #[[1]]&, candidateEdgeDirectionPairs ];
-		candidateAngles = Map[Mod[# + 180, 360]-180&, candidateAngles];
-
-		Print["candidate ids"];
-		Print[candidateAngleId];
-		Print[candidateAngles];
-
-		disjointTest = True;
-		For[nextAngleId = 1, nextAngleId <= Length[candidate], nextAngleId++,
-			mergedAngle = angles[[ Mod[minAngleId + nextAngleId - 1, Length[angles]] + 1 ]];
-			candidateAngle = candidateAngles[[ Mod[candidateAngleId - nextAngleId - 1, Length[candidateAngles]] + 1 ]];
-			Print[{nextAngleId, mergedAngle, candidateAngle}];
-			If[mergedAngle + candidateAngle > 0, Print["break nextAngleId: " <> IntegerString[nextAngleId]]; Break[]]; (* edges diverge, no need to track *)
-			If[mergedAngle + candidateAngle == 0, Print["continue nextAngleId: " <> IntegerString[nextAngleId]]; Continue[]]; (* edges match, continue to check *)
-			If[mergedAngle + candidateAngle < 0, Print["set false nextAngleId: " <> IntegerString[nextAngleId]]; disjointTest = False; Break[]; ]; (* overlapping *)
-		];
-		If[disjointTest == True,
-			For[previousAngleId = 1, previousAngleId <= Length[candidate], previousAngleId++,
-				mergedAngle = angles[[ Mod[minAngleId - previousAngleId - 1, Length[angles]] + 1 ]];
-				candidateAngle = candidateAngles[[ Mod[candidateAngleId + previousAngleId - 1, Length[candidateAngles]] + 1 ]];
-				Print[{previousAngleId, mergedAngle, candidateAngle}];
-				If[mergedAngle + candidateAngle > 0, Print["break previousAngleId: " <> IntegerString[previousAngleId]]; Break[]]; (* edges diverge, no need to track *)
-				If[mergedAngle + candidateAngle == 0, Print["continue previousAngleId: " <> IntegerString[previousAngleId]]; Continue[]]; (* edges match, continue to check *)
-				If[mergedAngle + candidateAngle < 0, Print["set false previousAngleId: " <> IntegerString[previousAngleId]]; disjointTest = False; Break[]; ]; (* overlapping *)
-			];
-		];
-
 (* 		If[ regionDisjoint != disjointTest,
 			Print["old and new disjoint tests do not match"];
 			Print[{regionDisjoint, disjointTest}];
@@ -644,9 +696,9 @@ For[stepId = 2, stepId <= stepLimit, stepId++,
 			regionDisjoint = True;
 		];
  *)		
- 		regionDisjoint = disjointTest;
+ 		regionDisjoint = candidateDisjointCheck[candidate, angles, minAngleId];
 
-		Print["finished region disjoint testing " <> ToString[regionDisjoint] <> " " <> IntegerString[stepId] <> " " <> IntegerString[cid]];
+ 		If[verbose, Print["finished region disjoint testing " <> ToString[regionDisjoint] <> " " <> IntegerString[stepId] <> " " <> IntegerString[cid]];];
 
 		If[regionDisjoint,
 			AppendTo[disjointCandidates, matchingPolygon];
@@ -732,21 +784,11 @@ For[stepId = 2, stepId <= stepLimit, stepId++,
 	Print["orthErrors"];
 	Print[orthErrors];
 	candidatePick = Select[ Range[Length[orthErrors]], orthErrors[[#]] < Min[orthErrors] + epsilon & ][[1]];
-	
 
-(* compare complex *)
-(* 	complexOffsets = Map[((#[[3]] + I * #[[4]])/(#[[1]] + I * #[[2]]))&, disjointCandidates4dCenterOffset];
-	Print[];
-	Print["targetSlope"];
-	Print[targetSlope//N];
-	Print["complexOffsets"];
-	Print[complexOffsets];
-	complexErrors = Map[ Norm[# - targetSlope]&, complexOffsets ];
-	Print["complexErrors"];
-	Print[complexErrors];
-	candidatePick = Select[ Range[Length[complexErrors]], complexErrors[[#]] < Min[complexErrors] + epsilon & ][[1]];
- *)
-	(* candidatePick = RandomInteger[ {1, Length[disjointCandidates]} ]; *)
+	(* naive random pick *)
+	If[filterBy4d == False,
+		candidatePick = RandomInteger[ {1, Length[disjointCandidates]} ];
+	];
 
 	(* override *)
 (* 	If[stepId == 38,
@@ -767,7 +809,9 @@ For[stepId = 2, stepId <= stepLimit, stepId++,
 
 	(* need my own region union function *)
 	Print["starting region union of selected tile"];
-	mergedRegion = RegionUnion[matchingRegion, mergedRegion];
+	(* mergedRegion = RegionUnion[matchingRegion, mergedRegion]; *)
+	mergedPatchPolygon = mergePolygons[mergedPatchPolygon, matchingPolygon, minAnglePoint];
+
 	Print["Finished region union of selected tile"];
 	AppendTo[mergedTiles, matchingPolygon];
 	AppendTo[mergedTiles4d, matchingPolygon4d];
