@@ -71,7 +71,7 @@ imageSize = 720/3 * {4, 3};
 
 truncateThreshold = 2;
 
-range = 25;
+range = 35;
 (* If[singleTile, 3, If[shape == "spectre", 10, 8]]; (* change to 10 *) *)
 thickness = 0.02;
 
@@ -323,6 +323,25 @@ exportAnimation[] := Module[
 
 move[cells_, offset_] := Map[# + offset &, cells, {1}];
 regionDisjointByArea[region1_, region2_] := Abs[ Area[region1] + Area[region2] - Area[RegionUnion[region1, region2]] ] < Sqrt[epsilon];
+
+(* regionDisjointByArea[region1_, region2_] := Abs[ Area[region1] + Area[region2] - Area[RegionUnion[BoundaryDiscretizeRegion[region1], BoundaryDiscretizeRegion[region2]]] ] < Sqrt[epsilon]; *)
+
+(* regionDisjointByArea[region1_, region2_] := Module[
+	{regionUnion},
+	Print["region1"];
+	Print[region1];
+	Print["region2"];
+	Print[region2];
+	regionUnion = RegionUnion[region1, region2];
+	Print["finished union " <> ToString[regionUnion]];
+	result = (Abs[ Area[region1] + Area[region2] - Area[RegionUnion[region1, region2]] ] < Sqrt[epsilon]);
+	Print["calculated result " <> ToString[result]];
+	result
+];
+ *)
+
+
+
 (* regionDisjointByIntersection[region1_, region2_] := Area[ RegionIntersection[region1, region2] ] < Sqrt[epsilon]; *)
 
 getPoints[region_] := Apply[List, RegionBoundary[region]][[1]];
@@ -344,18 +363,27 @@ regionDisjointByTile[onePolygon_, manyPolygons_] := Module[
 ];
 
 regionDisjointByConvexParts[onePolygon_, manyPolygons_] := Module[
-	{nearbyPolygons, partsFromOnePolygon, partsFromNearbyPolygons, overlapping, pid, part1, part1NotOverlapping},
+	{nearbyPolygons, partsFromOnePolygon, partsFromNearbyPolygons, pid, part1, disjointSubResult},
 	nearbyPolygons = Select[manyPolygons, EuclideanDistance[ Mean[#], Mean[onePolygon] ] < 10 &];
 	partsFromOnePolygon = getConvexParts[onePolygon];
 	partsFromNearbyPolygons = Flatten[Map[getConvexParts, manyPolygons], 1];
-	overlapping = False;
 	For[pid = 1, pid<=Length[partsFromOnePolygon], pid++,
 		part1 = partsFromOnePolygon[[pid]];
-		part1NotOverlapping = AllTrue[partsFromNearbyPolygons, regionDisjointByArea[ Region[Polygon[part1]], Region[Polygon[#]] ]&];
-		If[part1NotOverlapping == False, Return[False]];
-	];
+		For[pid2 = 1, pid2 <= Length[partsFromNearbyPolygons], pid2++,
+			Print["starting"];
+			Print[{pid, Length[partsFromOnePolygon], pid2, Length[partsFromNearbyPolygons] }];
 
-	True
+			disjointSubResult = regionDisjointByArea[ Region[Polygon[part1]], Region[Polygon[ partsFromNearbyPolygons[[pid2]] ]] ];
+			Print[{pid, Length[partsFromOnePolygon], pid2, Length[partsFromNearbyPolygons] }];
+			Print["disjointSubResult: " <> ToString[disjointSubResult]];
+			If[ disjointSubResult == False,
+				Return[False];
+			];
+		];
+	];
+	Print["no false, returning True"];
+
+	Return[True]
 ];
 
 projection42 = Transpose[{{1, 0, 1, 0}, {0, 1, 0, 1}}];
@@ -469,7 +497,21 @@ For[stepId = 2, stepId <= stepLimit, stepId++,
 	Print[];
 	Print["Starting stepId " <> IntegerString[stepId]];
 
-	mergedRegionPoints = getPoints[mergedRegion];
+	originalRegionPoints = getPoints[mergedRegion];
+	mergedRegionPoints = { originalRegionPoints[[1]] };
+	For[pointId = 2, pointId <= Length[originalRegionPoints], pointId++,
+		edgeLength = Norm[ originalRegionPoints[[pointId - 1]] - originalRegionPoints[[pointId]] ];
+		If[ Abs[ edgeLength - 2 ] < epsilon, 
+			AppendTo[mergedRegionPoints, originalRegionPoints[[pointId]]],
+			If[ Abs[ edgeLength - 4 ] < epsilon, 
+				AppendTo[mergedRegionPoints, (originalRegionPoints[[pointId-1]] + originalRegionPoints[[pointId]])/2 ];
+				AppendTo[mergedRegionPoints, originalRegionPoints[[pointId]]],
+				Print["Unexpected edge length: " <> ToString[edgeLength]];
+				Exit[];
+			];
+		];
+	];
+
 	edges = getEdgesFromPoints[mergedRegionPoints];
 	relativeEdges = Map[#[[2]] - #[[1]] &, edges];
 	Print[Tally[Round[Norm/@relativeEdges, epsilon]]];
@@ -488,9 +530,9 @@ For[stepId = 2, stepId <= stepLimit, stepId++,
 	(* negativeAngleIds = Select[Range[Length[angles]], angles[[#]] == - 60 &]; *)
 	(* Print[negativeAngleIds]; *)
 	minNormRefPoint = {0, 0};
-	If[stepId >= 46,
-		minNormRefPoint = {15, 0};
-	];
+(* 	If[stepId >= 59,
+		minNormRefPoint = {0, -15};
+	]; *)
 	negativeAnglePointNorms = Map[ Norm[mergedRegionPoints[[# + 1]] - minNormRefPoint]&, negativeAngleIds ];
 	minNorm = Min[negativeAnglePointNorms];
 
@@ -506,6 +548,10 @@ For[stepId = 2, stepId <= stepLimit, stepId++,
 	Print[minAnglePoint];
 	Print[edgeDirectionPair];
 	Print[matchingDirectionPair];
+
+	Print["merged region angles"];
+	Print[minAngleId];
+	Print[angles];
 
 	If[!KeyExistsQ[polygonTemplates[matchingDirectionPair]],
 		Print["matchingDirectionPair not found. Processing terminated. StepId: " <> IntegerString[stepId]];
@@ -527,14 +573,21 @@ For[stepId = 2, stepId <= stepLimit, stepId++,
 		matchingPolygon = move[candidate, minAnglePoint];
 		matchingRegion = Region[Polygon[matchingPolygon]];
 
-(* 		If[stepId == 24 && cid == 3, 
+(* 		If[stepId == 26 && cid == 4, 
 			Print["test starts"];
 			Print[mergedRegion];
 			Print[matchingRegion];
+			Print["test union 1"];
+			Print[RegionUnion[matchingRegion, mergedRegion]];
+			Print["test union 2"];
+			Print[RegionUnion[BoundaryDiscretizeRegion[matchingRegion], BoundaryDiscretizeRegion[mergedRegion]]];
+			Print["test disjoint"];
+
 			regionDisjointByArea[matchingRegion, mergedRegion];
 			Print["test ends"];
 		];
  *)
+ 		Print[];
 		Print["testing region disjoint testing " <> IntegerString[stepId] <> " " <> IntegerString[cid] ];
 (* 		If[(stepId == 45 && cid == 2), 
 			Print[matchingRegion];
@@ -544,9 +597,54 @@ For[stepId = 2, stepId <= stepLimit, stepId++,
 		];
  *)
 		(* regionDisjoint = regionDisjointByArea[matchingRegion, mergedRegion]; *)
+		(* Print["original disjoint test: " <> ToString[regionDisjoint]]; *)
+		(* regionDisjoint = regionDisjointByConvexParts[matchingPolygon, mergedTiles]; *)
 
-		regionDisjoint = regionDisjointByConvexParts[matchingPolygon, mergedTiles];
+		candidateVertexId = Select[Range[Length[candidate]], Norm[candidate[[#]]] < epsilon &][[1]];
+		candidateAngleId = Mod[candidateVertexId - 2, Length[candidate]] + 1;
 		
+		candidateEdges = getEdgesFromFace[candidate];
+		candidateRelativeEdges = Map[#[[2]] - #[[1]] &, candidateEdges];
+		candidateEdgeDirections = Map[getDirection, candidateRelativeEdges];
+		candidateEdgeDirectionPairs = getEdgesFromFace[ candidateEdgeDirections ];
+		candidateAngles = Map[#[[2]] - #[[1]]&, candidateEdgeDirectionPairs ];
+		candidateAngles = Map[Mod[# + 180, 360]-180&, candidateAngles];
+
+		Print["candidate ids"];
+		Print[candidateAngleId];
+		Print[candidateAngles];
+
+		disjointTest = True;
+		For[nextAngleId = 1, nextAngleId <= Length[candidate], nextAngleId++,
+			mergedAngle = angles[[ Mod[minAngleId + nextAngleId - 1, Length[angles]] + 1 ]];
+			candidateAngle = candidateAngles[[ Mod[candidateAngleId - nextAngleId - 1, Length[candidateAngles]] + 1 ]];
+			Print[{nextAngleId, mergedAngle, candidateAngle}];
+			If[mergedAngle + candidateAngle > 0, Print["break nextAngleId: " <> IntegerString[nextAngleId]]; Break[]]; (* edges diverge, no need to track *)
+			If[mergedAngle + candidateAngle == 0, Print["continue nextAngleId: " <> IntegerString[nextAngleId]]; Continue[]]; (* edges match, continue to check *)
+			If[mergedAngle + candidateAngle < 0, Print["set false nextAngleId: " <> IntegerString[nextAngleId]]; disjointTest = False; Break[]; ]; (* overlapping *)
+		];
+		If[disjointTest == True,
+			For[previousAngleId = 1, previousAngleId <= Length[candidate], previousAngleId++,
+				mergedAngle = angles[[ Mod[minAngleId - previousAngleId - 1, Length[angles]] + 1 ]];
+				candidateAngle = candidateAngles[[ Mod[candidateAngleId + previousAngleId - 1, Length[candidateAngles]] + 1 ]];
+				Print[{previousAngleId, mergedAngle, candidateAngle}];
+				If[mergedAngle + candidateAngle > 0, Print["break previousAngleId: " <> IntegerString[previousAngleId]]; Break[]]; (* edges diverge, no need to track *)
+				If[mergedAngle + candidateAngle == 0, Print["continue previousAngleId: " <> IntegerString[previousAngleId]]; Continue[]]; (* edges match, continue to check *)
+				If[mergedAngle + candidateAngle < 0, Print["set false previousAngleId: " <> IntegerString[previousAngleId]]; disjointTest = False; Break[]; ]; (* overlapping *)
+			];
+		];
+
+(* 		If[ regionDisjoint != disjointTest,
+			Print["old and new disjoint tests do not match"];
+			Print[{regionDisjoint, disjointTest}];
+			(* Exit[]; *)
+		];
+ *)(* 
+		If[stepId == 38,
+			regionDisjoint = True;
+		];
+ *)		
+ 		regionDisjoint = disjointTest;
 
 		Print["finished region disjoint testing " <> ToString[regionDisjoint] <> " " <> IntegerString[stepId] <> " " <> IntegerString[cid]];
 
@@ -651,10 +749,10 @@ For[stepId = 2, stepId <= stepLimit, stepId++,
 	(* candidatePick = RandomInteger[ {1, Length[disjointCandidates]} ]; *)
 
 	(* override *)
-(* 	If[stepId == 31,
-		candidatePick = 2;
-	]; *)
-
+(* 	If[stepId == 38,
+		candidatePick = 5;
+	];
+ *)
 
 	Print["stepId: " <> IntegerString[stepId]
 		<> " Number of candidates: " <> IntegerString[Length[matchingCandidates]] 
